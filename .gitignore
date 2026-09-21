@@ -1,0 +1,10 @@
+node_modules
+dist
+*.local
+.DS_Store
+
+# personal financial data - never commit
+plan.json
+*.naught.json
+YNAB Export*
+*.tsbuildinfo
