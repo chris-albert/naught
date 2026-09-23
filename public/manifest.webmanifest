@@ -2,7 +2,7 @@
   "name": "Naught",
   "short_name": "Naught",
   "description": "A zero-based budget that lives in a file you own.",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#0f2a2a",
   "theme_color": "#0f2a2a",

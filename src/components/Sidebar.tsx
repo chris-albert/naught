@@ -20,6 +20,7 @@ const saveLabels: Record<SaveState, string> = {
 export function Sidebar() {
   const file = useBudget((s) => s.file)!
   const saveState = useBudget((s) => s.saveState)
+  const demo = useBudget((s) => s.demo)
   const close = useBudget((s) => s.close)
   const [theme, setThemeState] = useState(getTheme)
   const [connected, setConnected] = useState(false)
@@ -62,13 +63,13 @@ export function Sidebar() {
         <h1 className="brand">{file.name || 'Naught'}</h1>
       </div>
 
-      <NavLink to="/budget">Budget</NavLink>
-      <NavLink to="/reports">Reports</NavLink>
-      <NavLink to="/accounts" end>
+      <NavLink to="/app/budget">Budget</NavLink>
+      <NavLink to="/app/reports">Reports</NavLink>
+      <NavLink to="/app/accounts" end>
         All accounts
       </NavLink>
       {uncategorized > 0 && (
-        <NavLink to="/accounts?filter=uncategorized" className="account-link">
+        <NavLink to="/app/accounts?filter=uncategorized" className="account-link">
           <span>Needs a category</span>
           <span className="badge">{uncategorized}</span>
         </NavLink>
@@ -84,9 +85,9 @@ export function Sidebar() {
       ))}
 
       <h2>Settings</h2>
-      <NavLink to="/settings/accounts">Manage accounts</NavLink>
+      <NavLink to="/app/settings/accounts">Manage accounts</NavLink>
       <div className="nav-with-action">
-        <NavLink to="/sync">Bank sync</NavLink>
+        <NavLink to="/app/sync">Bank sync</NavLink>
         <button
           className={`icon-button ${syncing ? 'spinning' : ''}`}
           title={connected ? 'Sync linked accounts now' : 'Connect SimpleFIN first'}
@@ -97,7 +98,7 @@ export function Sidebar() {
         </button>
       </div>
       {syncMessage && <div className={`sync-message ${syncMessage.error ? 'neg' : ''}`}>{syncMessage.text}</div>}
-      <NavLink to="/import">Import</NavLink>
+      <NavLink to="/app/import">Import</NavLink>
       <button className="link" onClick={() => downloadBackup(file)}>
         Download backup
       </button>
@@ -112,19 +113,25 @@ export function Sidebar() {
         Theme: {theme}
       </button>
       <button className="link" onClick={close}>
-        Close file
+        {demo ? 'Leave demo' : 'Close file'}
       </button>
 
-      <div className={`save-state save-${saveState}`} onClick={saveState === 'error' ? saveNow : undefined}>
-        {saveLabels[saveState]}
-      </div>
+      {demo ? (
+        <div className="demo-note">
+          <strong>Demo data.</strong> Change anything you like; nothing is saved.
+        </div>
+      ) : (
+        <div className={`save-state save-${saveState}`} onClick={saveState === 'error' ? saveNow : undefined}>
+          {saveLabels[saveState]}
+        </div>
+      )}
     </nav>
   )
 }
 
 function AccountLink({ id, name, balance, status }: { id: string; name: string; balance: number; status: 'ok' | 'off' | null }) {
   return (
-    <NavLink to={`/accounts/${id}`} className="account-link">
+    <NavLink to={`/app/accounts/${id}`} className="account-link">
       <span>
         {status && <i className={`recon-dot ${status}`} title={status === 'ok' ? 'Matches the bank' : 'Does not match the bank'} />}
         {name}

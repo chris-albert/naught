@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { emptyBudget } from '../model/types'
 import {
   createNewFile,
@@ -113,6 +114,9 @@ export function WelcomePage({
       )}
 
       {error && <p className="neg">{error}</p>}
+      <p className="muted small">
+        <Link to="/">About Naught</Link> · <Link to="/demo">Try the demo</Link>
+      </p>
     </div>
   )
 }

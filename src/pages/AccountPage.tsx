@@ -14,7 +14,7 @@ export function AccountPage() {
   const inScope = account ? file.transactions.filter((t) => t.accountId === account.id) : file.transactions
   const uncategorized = inScope.filter((t) => !t.categoryId && !t.transferAccountId)
   const transactions = onlyUncategorized ? uncategorized : inScope
-  const base = account ? `/accounts/${account.id}` : '/accounts'
+  const base = account ? `/app/accounts/${account.id}` : '/app/accounts'
   const balance = account
     ? accountBalance(file, account.id)
     : file.accounts.filter((a) => !a.closed).reduce((sum, a) => sum + accountBalance(file, a.id), 0)

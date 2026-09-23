@@ -9,7 +9,9 @@ interface BudgetState {
   file: BudgetFile | null
   handle: FileSystemFileHandle | null
   saveState: SaveState
-  load: (file: BudgetFile, handle: FileSystemFileHandle | null) => void
+  /** Sample data opened from the landing page; never saved anywhere. */
+  demo: boolean
+  load: (file: BudgetFile, handle: FileSystemFileHandle | null, demo?: boolean) => void
   close: () => void
   update: (fn: (file: BudgetFile) => BudgetFile) => void
   setAssigned: (month: MonthKey, categoryId: string, cents: Cents) => void
@@ -30,14 +32,15 @@ export const useBudget = create<BudgetState>((set, get) => ({
   file: null,
   handle: null,
   saveState: 'no-file',
+  demo: false,
 
-  load: (file, handle) => {
+  load: (file, handle, demo = false) => {
     const ensured = ensurePaymentCategories(file)
-    set({ file: ensured, handle, saveState: handle ? (ensured === file ? 'clean' : 'dirty') : 'no-file' })
+    set({ file: ensured, handle, demo, saveState: handle ? (ensured === file ? 'clean' : 'dirty') : 'no-file' })
     if (ensured !== file) scheduleSave()
   },
 
-  close: () => set({ file: null, handle: null, saveState: 'no-file' }),
+  close: () => set({ file: null, handle: null, demo: false, saveState: 'no-file' }),
 
   update: (fn) => {
     const { file, handle } = get()

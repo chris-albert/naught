@@ -36,7 +36,7 @@ export function ImportPage() {
     try {
       const imported = importYnab(JSON.parse(await f.text()))
       update((current) => ({ ...imported, name: current.name || imported.name }))
-      navigate('/budget')
+      navigate('/app/budget')
     } catch (e) {
       setError((e as Error).message)
     }
