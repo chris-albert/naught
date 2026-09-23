@@ -30,12 +30,29 @@ export function TransactionTable({
   const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
   const categoryName = (id: string) => (id === INCOME_CATEGORY_ID ? 'Income' : file.categories.find((c) => c.id === id)?.name ?? '?')
   // After a category is picked by hand, offer to make it a rule for that payee.
-  const [suggestion, setSuggestion] = useState<{ transactionId: string; payee: string; categoryId: string } | null>(null)
+  // One offer per row; each stays until answered.
+  const [suggestions, setSuggestions] = useState<Map<string, { payee: string; categoryId: string }>>(new Map())
   const categorize = (t: Transaction, categoryId: string | null) => {
     updateTransaction(t.id, { categoryId })
     onCategorized?.(t.id)
     const offer = categoryId && t.payee && categoryForPayee(file, t.payee) !== categoryId
-    setSuggestion(offer ? { transactionId: t.id, payee: t.payee, categoryId } : null)
+    setSuggestions((m) => {
+      const next = new Map(m)
+      if (offer) next.set(t.id, { payee: t.payee, categoryId })
+      else next.delete(t.id)
+      return next
+    })
+  }
+  const dismiss = (transactionId: string) =>
+    setSuggestions((m) => {
+      const next = new Map(m)
+      next.delete(transactionId)
+      return next
+    })
+  const acceptRule = (transactionId: string, payee: string, categoryId: string) => {
+    setPayeeRule(payee, categoryId)
+    // The rule answers every pending offer for this payee.
+    setSuggestions((m) => new Map([...m].filter(([id, s]) => id !== transactionId && s.payee !== payee)))
   }
   const payees = useMemo(() => {
     const names = new Set<string>()
@@ -56,28 +73,24 @@ export function TransactionTable({
   // A list that is only cleared rows needs no heading.
   const headings = sections.length > 1 || sections[0]?.title !== 'Cleared'
 
-  // Rendered under the row it belongs to.
-  const others = suggestion ? uncategorizedFrom(file, suggestion.payee).filter((o) => o.id !== suggestion.transactionId).length : 0
-  const suggestionRow = suggestion && (
-    <tr key="rule-suggestion" className="rule-suggestion">
-      <td colSpan={columns}>
-        <span>
-          Always use <strong>{categoryName(suggestion.categoryId)}</strong> for <strong>{suggestion.payee}</strong>?
-        </span>
-        <button
-          onClick={() => {
-            setPayeeRule(suggestion.payee, suggestion.categoryId)
-            setSuggestion(null)
-          }}
-        >
-          {others > 0 ? `Yes, and categorize ${others} more` : 'Yes'}
-        </button>
-        <button className="link" onClick={() => setSuggestion(null)}>
-          No
-        </button>
-      </td>
-    </tr>
-  )
+  const renderSuggestion = (t: Transaction) => {
+    const s = suggestions.get(t.id)
+    if (!s) return null
+    const others = uncategorizedFrom(file, s.payee).filter((o) => o.id !== t.id).length
+    return (
+      <tr key={`${t.id}-rule`} className="rule-suggestion">
+        <td colSpan={columns}>
+          <span>
+            Always use <strong>{categoryName(s.categoryId)}</strong> for <strong>{s.payee}</strong>?
+          </span>
+          <button onClick={() => acceptRule(t.id, s.payee, s.categoryId)}>{others > 0 ? `Yes, and categorize ${others} more` : 'Yes'}</button>
+          <button className="link" onClick={() => dismiss(t.id)}>
+            No
+          </button>
+        </td>
+      </tr>
+    )
+  }
 
   const renderRow = (t: Transaction) => [
     <tr key={t.id} className={!t.categoryId && !t.transferAccountId ? 'uncategorized' : ''}>
@@ -113,7 +126,7 @@ export function TransactionTable({
         </button>
       </td>
     </tr>,
-    suggestion?.transactionId === t.id ? suggestionRow : null,
+    renderSuggestion(t),
   ]
 
   return (
