@@ -39,6 +39,15 @@ describe('sampleBudget', () => {
     for (const g of m.groups) for (const r of g.rows) expect(r.available).toBeGreaterThanOrEqual(0)
   })
 
+  it('has recent uncategorized card transactions, including a repeated payee, and rules only for categorized payees', () => {
+    const f = sampleBudget(today)
+    const uncategorized = f.transactions.filter((t) => !t.categoryId && !t.transferAccountId)
+    expect(uncategorized.length).toBeGreaterThanOrEqual(5)
+    expect(uncategorized.filter((t) => t.payee === 'Whole Foods').length).toBeGreaterThan(1)
+    for (const t of uncategorized) expect(f.payeeRules).not.toHaveProperty(t.payee)
+    for (const id of Object.values(f.payeeRules!)) expect(id === 'income' || f.categories.some((c) => c.id === id)).toBe(true)
+  })
+
   it('reconciles against the pretend bank balances', () => {
     const f = sampleBudget(today)
     for (const a of f.accounts) expect(reconcile(f, a.id)?.difference).toBe(0)

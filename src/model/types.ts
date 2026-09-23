@@ -78,6 +78,8 @@ export interface BudgetFile {
   assigned: Record<MonthKey, Record<string, Cents>>
   /** ISO timestamp of the last successful SimpleFIN import. */
   simplefinLastSync?: string
+  /** payeeRules[payee] = category to give uncategorized transactions from that payee. */
+  payeeRules?: Record<string, string>
 }
 
 export function emptyBudget(name: string): BudgetFile {

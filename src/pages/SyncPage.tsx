@@ -225,7 +225,7 @@ export function SyncPage() {
           </p>
           {stats && (
             <p className="pos">
-              Imported: {stats.added} added, {stats.matched} matched to existing, {stats.updated} updated, {stats.unchanged}{' '}
+              Imported: {stats.added} added{stats.categorized > 0 ? ` (${stats.categorized} categorized by payee rules)` : ''}, {stats.matched} matched to existing, {stats.updated} updated, {stats.unchanged}{' '}
               already present{stats.removed > 0 ? `, ${stats.removed} stale pending removed` : ''}.
             </p>
           )}

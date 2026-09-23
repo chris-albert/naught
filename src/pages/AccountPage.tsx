@@ -16,7 +16,12 @@ export function AccountPage() {
   const account = id ? file.accounts.find((a) => a.id === id) : undefined
   const inScope = account ? file.transactions.filter((t) => t.accountId === account.id) : file.transactions
   const uncategorized = inScope.filter((t) => !t.categoryId && !t.transferAccountId)
-  const transactions = onlyUncategorized ? uncategorized : inScope
+  // Rows categorized while the filter is on stay visible until the filter is
+  // left, so you can see what you just did and the rule prompt has a row to sit under.
+  const filterKey = `${account?.id ?? 'all'}:${onlyUncategorized}`
+  const [kept, setKept] = useState({ key: filterKey, ids: new Set<string>() })
+  if (kept.key !== filterKey) setKept({ key: filterKey, ids: new Set() })
+  const transactions = onlyUncategorized ? inScope.filter((t) => (!t.categoryId && !t.transferAccountId) || kept.ids.has(t.id)) : inScope
   const base = account ? `/app/accounts/${account.id}` : '/app/accounts'
   const balance = account
     ? accountBalance(file, account.id)
@@ -44,7 +49,13 @@ export function AccountPage() {
       <div className="page-body">
       {account && <ReconcilePanel file={file} accountId={account.id} />}
       {account && adding && <AddTransactionForm file={file} accountId={account.id} />}
-      <TransactionTable file={file} transactions={transactions} showAccount={!account} />
+      <TransactionTable
+        file={file}
+        transactions={transactions}
+        showAccount={!account}
+        recentlyCategorized={onlyUncategorized ? kept.ids : undefined}
+        onCategorized={(id) => setKept((k) => ({ ...k, ids: new Set(k.ids).add(id) }))}
+      />
       </div>
     </>
   )

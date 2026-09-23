@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ensurePaymentCategories } from '../model/creditCards'
+import { deletePayeeRule, setPayeeRule } from '../model/payeeRules'
 import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type Cents, type MonthKey, type Transaction } from '../model/types'
 import { writeHandle } from '../storage/fileStore'
 
@@ -21,6 +22,9 @@ interface BudgetState {
   updateTransaction: (transactionId: string, patch: Partial<Transaction>) => void
   deleteTransaction: (transactionId: string) => void
   updateCategory: (categoryId: string, patch: Partial<Category>) => void
+  /** Always give `payee` this category; also fills it in on existing uncategorized transactions. */
+  setPayeeRule: (payee: string, categoryId: string) => void
+  deletePayeeRule: (payee: string) => void
   addAccount: (account: Omit<Account, 'id'>) => void
   updateAccount: (accountId: string, patch: Partial<Account>) => void
   /** Removes the account and every transaction in it. */
@@ -83,6 +87,10 @@ export const useBudget = create<BudgetState>((set, get) => ({
       ...file,
       categories: file.categories.map((c) => (c.id === categoryId ? { ...c, ...patch } : c)),
     })),
+
+  setPayeeRule: (payee, categoryId) => get().update((file) => setPayeeRule(file, payee, categoryId)),
+
+  deletePayeeRule: (payee) => get().update((file) => deletePayeeRule(file, payee)),
 
   addAccount: (account) =>
     get().update((file) => ({ ...file, accounts: [...file.accounts, { ...account, id: crypto.randomUUID() }] })),
