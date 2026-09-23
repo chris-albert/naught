@@ -38,7 +38,7 @@ export function Sidebar() {
     setSyncMessage(null)
     try {
       const s = await quickSync()
-      const parts = [s.added && `${s.added} added`, s.matched && `${s.matched} matched`, s.updated && `${s.updated} updated`, s.removed && `${s.removed} removed`].filter(Boolean)
+      const parts = [s.added && `${s.added} added`, s.categorized && `${s.categorized} auto-categorized`, s.matched && `${s.matched} matched`, s.updated && `${s.updated} updated`, s.removed && `${s.removed} removed`].filter(Boolean)
       setSyncMessage({ text: parts.length ? parts.join(', ') : 'Up to date', error: false })
     } catch (e) {
       setSyncMessage({ text: (e as Error).message, error: true })
@@ -86,6 +86,7 @@ export function Sidebar() {
 
       <h2>Settings</h2>
       <NavLink to="/app/settings/accounts">Manage accounts</NavLink>
+      <NavLink to="/app/settings/rules">Payee rules</NavLink>
       <div className="nav-with-action">
         <NavLink to="/app/sync">Bank sync</NavLink>
         <button

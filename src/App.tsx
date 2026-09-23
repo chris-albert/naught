@@ -8,6 +8,7 @@ import { AccountsPage } from './pages/AccountsPage'
 import { BudgetPage } from './pages/BudgetPage'
 import { ImportPage } from './pages/ImportPage'
 import { LandingPage } from './pages/LandingPage'
+import { PayeeRulesPage } from './pages/PayeeRulesPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SyncPage } from './pages/SyncPage'
 import { WelcomePage } from './pages/WelcomePage'
@@ -84,6 +85,7 @@ function BudgetApp() {
           <Route path="import" element={<ImportPage />} />
           <Route path="sync" element={<SyncPage />} />
           <Route path="settings/accounts" element={<AccountsPage />} />
+          <Route path="settings/rules" element={<PayeeRulesPage />} />
           <Route path="*" element={<Navigate to="/app/budget" replace />} />
         </Routes>
       </main>

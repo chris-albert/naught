@@ -33,8 +33,14 @@ Early skeleton. Working today:
   entered ones. The SimpleFIN credentials live in the browser's IndexedDB, not
   in the file.
 
-Not yet: adding transactions by hand, categorization rules, AI
-categorization, credit card payment envelopes (see below).
+- Payee rules: after you pick a category for a transaction, the row offers to
+  always use that category for the payee. Saying yes categorizes the other
+  uncategorized transactions from that payee and future bank imports. Rules
+  are listed under Settings → Payee rules, where they can be changed or
+  removed. Matching is on the exact payee name.
+
+Not yet: adding transactions by hand, AI categorization, credit card payment
+envelopes (see below).
 
 ## Development
 

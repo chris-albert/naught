@@ -58,7 +58,7 @@ describe('mergeSimplefin', () => {
       [bank({ transactions: [{ id: 'a', posted: day('2026-09-10'), amount: '-12.34', description: 'COFFEE SHOP', payee: 'Coffee' }] })],
       { now },
     )
-    expect(stats).toEqual({ added: 1, matched: 0, updated: 0, unchanged: 0, removed: 0 })
+    expect(stats).toEqual({ added: 1, matched: 0, updated: 0, unchanged: 0, removed: 0, categorized: 0 })
     expect(file.transactions[0]).toMatchObject({
       accountId: 'chk',
       date: '2026-09-10',
@@ -88,7 +88,7 @@ describe('mergeSimplefin', () => {
       ],
       { now },
     )
-    expect(stats).toEqual({ added: 0, matched: 0, updated: 1, unchanged: 1, removed: 0 })
+    expect(stats).toEqual({ added: 0, matched: 0, updated: 1, unchanged: 1, removed: 0, categorized: 0 })
     expect(file.transactions.find((t) => t.id === 'x')).toMatchObject({ date: '2026-09-12', cleared: 'cleared' })
     expect(file.transactions).toHaveLength(2)
   })
@@ -103,7 +103,7 @@ describe('mergeSimplefin', () => {
       [bank({ transactions: [{ id: 'g', posted: day('2026-09-10'), amount: '-42.00', description: 'GROCER 123' }] })],
       { now },
     )
-    expect(stats).toEqual({ added: 0, matched: 1, updated: 0, unchanged: 0, removed: 0 })
+    expect(stats).toEqual({ added: 0, matched: 1, updated: 0, unchanged: 0, removed: 0, categorized: 0 })
     const m = file.transactions.find((t) => t.id === 'm')!
     expect(m).toMatchObject({ importId: 'sfin:sf-1:g', categoryId: 'food', payee: 'Grocer', cleared: 'cleared' })
     expect(file.transactions.find((t) => t.id === 'far')!.importId).toBeUndefined()
@@ -120,7 +120,7 @@ describe('mergeSimplefin', () => {
       [bank({ transactions: [{ id: 'pay', posted: day('2026-09-08'), amount: '-84.90', description: 'Chase Credit Card' }] })],
       { now },
     )
-    expect(stats).toEqual({ added: 0, matched: 1, updated: 0, unchanged: 0, removed: 0 })
+    expect(stats).toEqual({ added: 0, matched: 1, updated: 0, unchanged: 0, removed: 0, categorized: 0 })
     expect(file.transactions.find((t) => t.id === 'transfer')!.importId).toBe('sfin:sf-1:pay')
     expect(file.transactions.find((t) => t.id === 'early')!.importId).toBeUndefined()
     expect(file.transactions).toHaveLength(2)
@@ -140,7 +140,7 @@ describe('mergeSimplefin', () => {
       ],
       { now },
     )
-    expect(stats).toEqual({ added: 1, matched: 1, updated: 0, unchanged: 0, removed: 0 })
+    expect(stats).toEqual({ added: 1, matched: 1, updated: 0, unchanged: 0, removed: 0, categorized: 0 })
     expect(file.transactions.find((t) => t.id === 'r')).toMatchObject({ cleared: 'reconciled', importId: 'sfin:sf-1:p1' })
     expect(file.transactions.find((t) => t.importId === 'sfin:sf-1:p2')).toMatchObject({ cleared: 'cleared' })
   })
@@ -166,7 +166,7 @@ describe('mergeSimplefin', () => {
       [bank({ transactions: [{ id: 'new', posted: day('2026-09-08'), amount: '-27.50', description: 'posted with tip' }] })],
       { since: '2026-08-20', now },
     )
-    expect(stats).toMatchObject({ added: 1, removed: 1 })
+    expect(stats).toMatchObject({ added: 1, removed: 1, categorized: 0 })
     expect(file.transactions.map((t) => t.id).sort()).toEqual(expect.arrayContaining(['manual', 'tooOld']))
     expect(file.transactions.find((t) => t.id === 'stale')).toBeUndefined()
     expect(file.transactions).toHaveLength(3)
@@ -208,5 +208,27 @@ describe('mergeSimplefin', () => {
     )
     expect(file.accounts[0]).toMatchObject({ bankBalance: 123456, bankBalanceDate: '2026-09-15T00:00:00.000Z', bankPending: -2000 })
     expect(file.transactions).toHaveLength(0)
+  })
+})
+
+describe('mergeSimplefin with payee rules', () => {
+  it('categorizes inserted transactions whose payee has a rule', () => {
+    const f = fileWith()
+    f.payeeRules = { Coffee: 'dining' }
+    const { file, stats } = mergeSimplefin(
+      f,
+      [
+        bank({
+          transactions: [
+            { id: 'a', posted: day('2026-09-10'), amount: '-12.34', description: 'COFFEE', payee: 'Coffee' },
+            { id: 'b', posted: day('2026-09-11'), amount: '-5.00', description: 'UNKNOWN', payee: 'Unknown' },
+          ],
+        }),
+      ],
+      { now: new Date('2026-09-16T00:00:00Z') },
+    )
+    expect(stats).toMatchObject({ added: 2, categorized: 1 })
+    expect(file.transactions.find((t) => t.payee === 'Coffee')?.categoryId).toBe('dining')
+    expect(file.transactions.find((t) => t.payee === 'Unknown')?.categoryId).toBeNull()
   })
 })

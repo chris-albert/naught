@@ -1,5 +1,6 @@
 import type { Account, AccountType, BudgetFile, Cents, Transaction } from '../model/types'
 import { INCOME_CATEGORY_ID } from '../model/types'
+import { categoryForPayee } from '../model/payeeRules'
 import type { SimplefinAccount, SimplefinTransaction } from './client'
 
 /** Bank transaction ids are only unique within an account, so the key includes both. */
@@ -18,6 +19,8 @@ export interface SyncStats {
   unchanged: number
   /** Stale pending rows from earlier imports that were dropped. */
   removed: number
+  /** Of `added`, how many a payee rule categorized. */
+  categorized: number
 }
 
 export interface MergeOptions {
@@ -60,7 +63,7 @@ export function createLinkedAccount(sfin: SimplefinAccount, type: AccountType, o
  * 1. Same importId already present -> update date/amount/cleared if the bank changed them (pending -> posted).
  * 2. Otherwise the existing transaction in the same account with the same amount, no importId,
  *    and the closest date within MATCH_WINDOW_DAYS -> adopt it (set importId, mark cleared).
- * 3. Otherwise insert it as a new uncategorized transaction.
+ * 3. Otherwise insert it as a new transaction, categorized by payee rule if one matches.
  *
  * Accounts listed in `newAccountIds` get a "Starting Balance" transaction so their
  * balance equals the bank's, since the bank only sends a window of history.
@@ -70,7 +73,7 @@ export function mergeSimplefin(
   accounts: SimplefinAccount[],
   { newAccountIds = new Set(), since, now = new Date() }: MergeOptions = {},
 ): { file: BudgetFile; stats: SyncStats } {
-  const stats: SyncStats = { added: 0, matched: 0, updated: 0, unchanged: 0, removed: 0 }
+  const stats: SyncStats = { added: 0, matched: 0, updated: 0, unchanged: 0, removed: 0, categorized: 0 }
   let transactions = file.transactions.map((t) => ({ ...t }))
   const byImportId = new Map<string, Transaction>()
   for (const t of transactions) if (t.importId) byImportId.set(t.importId, t)
@@ -120,12 +123,14 @@ export function mergeSimplefin(
         continue
       }
 
+      const payee = (bt.payee ?? bt.description ?? '').trim()
+      const categoryId = categoryForPayee(file, payee)
       const added: Transaction = {
         id: crypto.randomUUID(),
         accountId: account.id,
         date,
-        payee: (bt.payee ?? bt.description ?? '').trim(),
-        categoryId: null,
+        payee,
+        categoryId,
         memo: bt.memo ?? '',
         amount,
         cleared,
@@ -135,6 +140,7 @@ export function mergeSimplefin(
       transactions.push(added)
       byImportId.set(importId, added)
       stats.added++
+      if (categoryId) stats.categorized++
     }
 
     if (newAccountIds.has(account.id)) {

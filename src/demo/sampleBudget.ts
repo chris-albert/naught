@@ -3,9 +3,10 @@ import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type 
 
 /**
  * A made-up household budget for the demo: six months of paychecks, bills,
- * card spending, card payments and savings transfers, ending today. The same
- * input always produces the same file so the demo looks identical on every
- * visit and in tests.
+ * card spending, card payments and savings transfers, ending today, plus a
+ * handful of freshly imported card transactions that still need a category.
+ * The same input always produces the same file so the demo looks identical on
+ * every visit and in tests.
  */
 
 const MONTHS = 6
@@ -43,6 +44,21 @@ const plans: Plan[] = [
   { category: cat('emergency', 'demo-g-goals', 'Emergency fund', true), assigned: 50000 },
   { category: cat('house', 'demo-g-goals', 'House down payment', true), assigned: 85000 },
 ]
+
+/** Recent card transactions the "bank" just imported, not yet categorized: [days ago, payee, amount]. */
+const UNCATEGORIZED: [number, string, Cents][] = [
+  [1, 'Whole Foods', -8734],
+  [2, 'Netflix', -1549],
+  [3, 'Safeway', -6210],
+  [4, 'Uber', -2380],
+  [6, 'Whole Foods', -4315],
+  [7, 'Shell', -5122],
+  [9, 'Whole Foods', -11260],
+  [11, 'Safeway', -7890],
+]
+
+/** Rules the demo household already made; see src/model/payeeRules.ts. */
+const payeeRules: Record<string, string> = { 'Acme Corp': INCOME_CATEGORY_ID, 'Maple Street Apartments': 'demo-rent' }
 
 const PAYCHECK: Cents = 260000 // twice a month; the plans above assign almost all of it
 const SAVINGS_TRANSFER: Cents = 200000 // roughly what the goals set aside
@@ -126,6 +142,11 @@ export function sampleBudget(today = new Date().toISOString().slice(0, 10)): Bud
     add({ accountId: savings.id, date: iso(month, 16), payee: 'Transfer : Checking', categoryId: null, amount: SAVINGS_TRANSFER, transferAccountId: checking.id })
   }
 
+  const daysAgo = (n: number) => new Date(Date.parse(today) - n * 86400000).toISOString().slice(0, 10)
+  for (const [ago, payee, amount] of UNCATEGORIZED) {
+    add({ accountId: visa.id, date: daysAgo(ago), payee, categoryId: null, amount, transferAccountId: null })
+  }
+
   transactions.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
   // Pretend the bank agrees with everything that has cleared, so reconciliation shows green.
@@ -143,5 +164,6 @@ export function sampleBudget(today = new Date().toISOString().slice(0, 10)): Bud
     categories: plans.map((p) => p.category),
     transactions,
     assigned,
+    payeeRules,
   }
 }

@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { formatCents } from '../model/money'
-import type { BudgetFile, Transaction } from '../model/types'
+import { categoryForPayee, uncategorizedFrom } from '../model/payeeRules'
+import { INCOME_CATEGORY_ID, type BudgetFile, type Transaction } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { CategoryPicker } from './CategoryPicker'
 import { confirm } from './ConfirmDialog'
@@ -11,7 +12,16 @@ const LIMIT = 500
 export function TransactionTable({ file, transactions, showAccount }: { file: BudgetFile; transactions: Transaction[]; showAccount: boolean }) {
   const updateTransaction = useBudget((s) => s.updateTransaction)
   const deleteTransaction = useBudget((s) => s.deleteTransaction)
+  const setPayeeRule = useBudget((s) => s.setPayeeRule)
   const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
+  const categoryName = (id: string) => (id === INCOME_CATEGORY_ID ? 'Income' : file.categories.find((c) => c.id === id)?.name ?? '?')
+  // After a category is picked by hand, offer to make it a rule for that payee.
+  const [suggestion, setSuggestion] = useState<{ transactionId: string; payee: string; categoryId: string } | null>(null)
+  const categorize = (t: Transaction, categoryId: string | null) => {
+    updateTransaction(t.id, { categoryId })
+    const offer = categoryId && t.payee && categoryForPayee(file, t.payee) !== categoryId
+    setSuggestion(offer ? { transactionId: t.id, payee: t.payee, categoryId } : null)
+  }
   const payees = useMemo(() => {
     const names = new Set<string>()
     for (const t of file.transactions) if (t.payee) names.add(t.payee)
@@ -23,7 +33,31 @@ export function TransactionTable({ file, transactions, showAccount }: { file: Bu
   const shown = rest.slice(0, LIMIT)
   const columns = showAccount ? 7 : 6
 
-  const renderRow = (t: Transaction) => (
+  // The prompt sits under its row, or at the top when the row has left the list (uncategorized filter).
+  const suggestionInList = suggestion !== null && transactions.some((t) => t.id === suggestion.transactionId)
+  const others = suggestion ? uncategorizedFrom(file, suggestion.payee).filter((o) => o.id !== suggestion.transactionId).length : 0
+  const suggestionRow = suggestion && (
+    <tr key="rule-suggestion" className="rule-suggestion">
+      <td colSpan={columns}>
+        <span>
+          Always use <strong>{categoryName(suggestion.categoryId)}</strong> for <strong>{suggestion.payee}</strong>?
+        </span>
+        <button
+          onClick={() => {
+            setPayeeRule(suggestion.payee, suggestion.categoryId)
+            setSuggestion(null)
+          }}
+        >
+          {others > 0 ? `Yes, and categorize ${others} more` : 'Yes'}
+        </button>
+        <button className="link" onClick={() => setSuggestion(null)}>
+          No
+        </button>
+      </td>
+    </tr>
+  )
+
+  const renderRow = (t: Transaction) => [
     <tr key={t.id} className={!t.categoryId && !t.transferAccountId ? 'uncategorized' : ''}>
       {showAccount && <td>{accountName.get(t.accountId)}</td>}
       <td>{t.date}</td>
@@ -34,7 +68,7 @@ export function TransactionTable({ file, transactions, showAccount }: { file: Bu
         {t.transferAccountId ? (
           <span className="muted">Transfer: {accountName.get(t.transferAccountId) ?? '?'}</span>
         ) : (
-          <CategoryPicker file={file} value={t.categoryId} onChange={(categoryId) => updateTransaction(t.id, { categoryId })} />
+          <CategoryPicker file={file} value={t.categoryId} onChange={(categoryId) => categorize(t, categoryId)} />
         )}
       </td>
       <td className={`num ${t.amount < 0 ? 'neg' : 'pos'}`}>{formatCents(t.amount)}</td>
@@ -56,8 +90,9 @@ export function TransactionTable({ file, transactions, showAccount }: { file: Bu
           ✕
         </button>
       </td>
-    </tr>
-  )
+    </tr>,
+    suggestion?.transactionId === t.id ? suggestionRow : null,
+  ]
 
   return (
     <>
@@ -73,6 +108,7 @@ export function TransactionTable({ file, transactions, showAccount }: { file: Bu
             <th></th>
           </tr>
         </thead>
+        {suggestionRow && !suggestionInList && <tbody>{suggestionRow}</tbody>}
         {uncleared.length > 0 && (
           <tbody>
             <tr className="section-row">
