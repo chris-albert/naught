@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { MoveMoneyDialog, type MoveTarget } from '../components/MoveMoneyDialog'
+import { MoveMoneyPopover, type MoveTarget } from '../components/MoveMoneyPopover'
 import { computeMonth } from '../model/budgetMath'
 import { addMonths, currentMonth, formatMonth } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
@@ -87,7 +87,9 @@ export function BudgetPage() {
                       className={`pill ${r.available < 0 ? 'neg' : r.available > 0 ? 'pos' : 'zero'}`}
                       disabled={r.available === 0}
                       title={r.available < 0 ? 'Cover overspending' : r.available > 0 ? 'Move money' : undefined}
-                      onClick={() => setMoveTarget({ category: r.category, available: r.available })}
+                      onClick={(e) =>
+                        setMoveTarget({ category: r.category, available: r.available, anchor: e.currentTarget.getBoundingClientRect() })
+                      }
                     >
                       {formatCents(r.available)}
                     </button>
@@ -98,7 +100,9 @@ export function BudgetPage() {
         ))}
       </table>
       </div>
-      <MoveMoneyDialog file={file} month={month} target={moveTarget} onClose={() => setMoveTarget(null)} />
+      {moveTarget && (
+        <MoveMoneyPopover key={moveTarget.category.id} file={file} month={month} target={moveTarget} onClose={() => setMoveTarget(null)} />
+      )}
     </>
   )
 }
