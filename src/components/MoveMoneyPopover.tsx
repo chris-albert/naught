@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { formatCents, parseCents } from '../model/money'
 import type { BudgetFile, Category, Cents, MonthKey } from '../model/types'
 import { useBudget } from '../store/budgetStore'
@@ -32,11 +32,21 @@ export function MoveMoneyPopover({
   const ref = useRef<HTMLFormElement>(null)
   const [other, setOther] = useState<string | null>(null)
   const [amountText, setAmountText] = useState(() => formatCents(target.available))
+  const [top, setTop] = useState(target.anchor.bottom + 6)
+
+  // Hang below the pill, or above it when there is no room below.
+  useLayoutEffect(() => {
+    const h = ref.current?.offsetHeight ?? 0
+    const { anchor } = target
+    setTop(anchor.bottom + 6 + h > window.innerHeight ? anchor.top - 6 - h : anchor.bottom + 6)
+  }, [target])
 
   useEffect(() => {
     const inside = (t: EventTarget | null) => ref.current?.contains(t as Node) ?? false
+    // Picking from the category list unmounts the list synchronously inside
+    // the mousedown, so check the path captured at dispatch, not the target.
     const onDown = (e: MouseEvent) => {
-      if (!inside(e.target)) onClose()
+      if (ref.current && !e.composedPath().includes(ref.current)) onClose()
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -80,12 +90,11 @@ export function MoveMoneyPopover({
     onClose()
   }
 
-  const { anchor } = target
   return (
     <form
       ref={ref}
       className="move-popover"
-      style={{ top: anchor.bottom + 6, right: window.innerWidth - anchor.right }}
+      style={{ top, right: window.innerWidth - target.anchor.right }}
       onSubmit={(e) => {
         e.preventDefault()
         submit()
