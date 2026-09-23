@@ -351,6 +351,10 @@ input.target-amount { flex: 1; text-align: right; }
 .panel-transactions li .muted { font-size: 12px; }
 .panel-transactions li a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-transactions li a:hover { color: var(--accent); }
+.slideover h4 button.toggle { padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
+.slideover h4 button.toggle:hover { color: var(--text); }
+.slideover h4 button.toggle .chevron { display: inline-block; width: 12px; transform: rotate(-90deg); transition: transform 0.15s ease; }
+.slideover h4 button.toggle.open .chevron { transform: none; }
 .slideover label.option { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; }
 .slideover label.option input { margin-top: 2px; }
 .slideover label.option small { display: block; font-size: 12px; line-height: 1.35; }

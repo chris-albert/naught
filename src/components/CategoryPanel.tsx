@@ -33,6 +33,7 @@ export function CategoryPanel({
   const updateCategory = useBudget((s) => s.updateCategory)
   const moveAssigned = useBudget((s) => s.moveAssigned)
   const [targetText, setTargetText] = useState<string | null>(null)
+  const [showOptions, setShowOptions] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,21 +168,29 @@ export function CategoryPanel({
       </section>
 
       <section>
-        <h4>Options</h4>
-        <label className="option">
-          <input type="checkbox" checked={!!category.reserve} onChange={(e) => updateCategory(category.id, { reserve: e.target.checked })} />
-          <span>
-            Reserve
-            <small className="muted">Savings-style: money here is set aside, and spending from it is a draw, not a living expense.</small>
-          </span>
-        </label>
-        <label className="option">
-          <input type="checkbox" checked={category.hidden} onChange={(e) => updateCategory(category.id, { hidden: e.target.checked })} />
-          <span>
-            Hidden
-            <small className="muted">Kept out of the budget table unless "show hidden" is on.</small>
-          </span>
-        </label>
+        <h4>
+          <button type="button" className={`link toggle ${showOptions ? 'open' : ''}`} onClick={() => setShowOptions(!showOptions)}>
+            <span className="chevron">▾</span> Options
+          </button>
+        </h4>
+        {showOptions && (
+          <>
+            <label className="option">
+              <input type="checkbox" checked={!!category.reserve} onChange={(e) => updateCategory(category.id, { reserve: e.target.checked })} />
+              <span>
+                Reserve
+                <small className="muted">Savings-style: money here is set aside, and spending from it is a draw, not a living expense.</small>
+              </span>
+            </label>
+            <label className="option">
+              <input type="checkbox" checked={category.hidden} onChange={(e) => updateCategory(category.id, { hidden: e.target.checked })} />
+              <span>
+                Hidden
+                <small className="muted">Kept out of the budget table unless "show hidden" is on.</small>
+              </span>
+            </label>
+          </>
+        )}
       </section>
     </aside>
   )
