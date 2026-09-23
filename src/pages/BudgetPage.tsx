@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { MoveMoneyPopover, type MoveTarget } from '../components/MoveMoneyPopover'
 import { computeMonth } from '../model/budgetMath'
 import { addMonths, currentMonth, formatMonth } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
@@ -12,6 +13,7 @@ export function BudgetPage() {
   const setAssigned = useBudget((s) => s.setAssigned)
   const [showHidden, setShowHidden] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
+  const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null)
 
   const toggleGroup = (id: string) => {
     const next = new Set(collapsed)
@@ -80,9 +82,17 @@ export function BudgetPage() {
                   </td>
                   <td className={`num ${tint(r.activity)}`}>{formatCents(r.activity)}</td>
                   <td className="num">
-                    <span className={`pill ${r.available < 0 ? 'neg' : r.available > 0 ? 'pos' : 'zero'}`}>
+                    <button
+                      type="button"
+                      className={`pill ${r.available < 0 ? 'neg' : r.available > 0 ? 'pos' : 'zero'}`}
+                      disabled={r.available === 0}
+                      title={r.available < 0 ? 'Cover overspending' : r.available > 0 ? 'Move money' : undefined}
+                      onClick={(e) =>
+                        setMoveTarget({ category: r.category, available: r.available, anchor: e.currentTarget.getBoundingClientRect() })
+                      }
+                    >
                       {formatCents(r.available)}
-                    </span>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -90,6 +100,9 @@ export function BudgetPage() {
         ))}
       </table>
       </div>
+      {moveTarget && (
+        <MoveMoneyPopover key={moveTarget.category.id} file={file} month={month} target={moveTarget} onClose={() => setMoveTarget(null)} />
+      )}
     </>
   )
 }
