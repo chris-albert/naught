@@ -15,6 +15,8 @@ interface BudgetState {
   close: () => void
   update: (fn: (file: BudgetFile) => BudgetFile) => void
   setAssigned: (month: MonthKey, categoryId: string, cents: Cents) => void
+  /** Shift `cents` of assigned money from one category to another in `month`; null on either side means To budget. */
+  moveAssigned: (month: MonthKey, fromId: string | null, toId: string | null, cents: Cents) => void
   updateTransaction: (transactionId: string, patch: Partial<Transaction>) => void
   deleteTransaction: (transactionId: string) => void
   updateCategory: (categoryId: string, patch: Partial<Category>) => void
@@ -54,6 +56,14 @@ export const useBudget = create<BudgetState>((set, get) => ({
       ...file,
       assigned: { ...file.assigned, [month]: { ...(file.assigned[month] ?? {}), [categoryId]: cents } },
     })),
+
+  moveAssigned: (month, fromId, toId, cents) =>
+    get().update((file) => {
+      const assigned = { ...(file.assigned[month] ?? {}) }
+      if (fromId) assigned[fromId] = (assigned[fromId] ?? 0) - cents
+      if (toId) assigned[toId] = (assigned[toId] ?? 0) + cents
+      return { ...file, assigned: { ...file.assigned, [month]: assigned } }
+    }),
 
   updateTransaction: (transactionId, patch) =>
     get().update((file) => ({

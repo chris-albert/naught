@@ -197,6 +197,9 @@ code { font-size: 0.9em; background: var(--panel-2); padding: 1px 5px; border-ra
 .pill.pos { background: var(--pos-soft); color: var(--pos); }
 .pill.neg { background: var(--neg-soft); color: var(--neg); }
 .pill.zero { background: var(--panel-2); color: var(--muted); font-weight: 500; }
+button.pill { font: inherit; border: none; box-shadow: none; cursor: pointer; transition: filter 0.15s ease; }
+button.pill:hover:not(:disabled) { filter: brightness(0.94); box-shadow: none; }
+button.pill:disabled { cursor: default; }
 
 input.assigned { width: 110px; text-align: right; padding: 2px 8px; border-color: transparent; background: transparent; box-shadow: none; }
 input.assigned:hover { border-color: var(--border); background: var(--panel-2); }
@@ -297,6 +300,13 @@ dialog.confirm::backdrop { background: rgba(10, 14, 20, 0.5); backdrop-filter: b
 .confirm-body h3 { margin: 0 0 6px; font-size: 17px; }
 .confirm-body p { margin: 0 0 18px; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.move-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.move-row > span { width: 80px; color: var(--muted); }
+.move-row .picker-button { flex: 1; max-width: none; border-color: var(--border); padding: 6px 10px; border-radius: 8px; }
+.move-row .picker-button.muted { color: var(--muted); }
+.move-row + .confirm-actions { margin-top: 20px; }
+.confirm-actions button:disabled { opacity: 0.45; cursor: default; filter: none; box-shadow: none; }
+input.move-amount { flex: 1; text-align: right; }
 button.danger:not(.link) { background: linear-gradient(135deg, #e05252 0%, #f0883e 100%); box-shadow: 0 2px 8px rgba(214, 69, 69, 0.35); }
 button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); }
 
