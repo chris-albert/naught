@@ -13,11 +13,14 @@ export function TransactionTable({
   file,
   transactions,
   showAccount,
+  recentlyCategorized,
   onCategorized,
 }: {
   file: BudgetFile
   transactions: Transaction[]
   showAccount: boolean
+  /** Rows to show in their own "Recently categorized" section instead of by cleared state. */
+  recentlyCategorized?: Set<string>
   /** Called after a category is picked by hand, so the page can keep the row visible under a filter. */
   onCategorized?: (transactionId: string) => void
 }) {
@@ -40,10 +43,18 @@ export function TransactionTable({
     return [...names].sort((a, b) => a.localeCompare(b)).map((name) => ({ key: name, label: name }))
   }, [file.transactions])
 
-  const uncleared = transactions.filter((t) => t.cleared === 'uncleared')
-  const rest = transactions.filter((t) => t.cleared !== 'uncleared')
+  const recent = transactions.filter((t) => recentlyCategorized?.has(t.id))
+  const uncleared = transactions.filter((t) => !recentlyCategorized?.has(t.id) && t.cleared === 'uncleared')
+  const rest = transactions.filter((t) => !recentlyCategorized?.has(t.id) && t.cleared !== 'uncleared')
   const shown = rest.slice(0, LIMIT)
   const columns = showAccount ? 7 : 6
+  const sections = [
+    { title: 'Recently categorized', rows: recent, count: true },
+    { title: 'Uncleared', rows: uncleared, count: true },
+    { title: 'Cleared', rows: shown, count: false },
+  ].filter((s) => s.rows.length > 0)
+  // A list that is only cleared rows needs no heading.
+  const headings = sections.length > 1 || sections[0]?.title !== 'Cleared'
 
   // Rendered under the row it belongs to.
   const others = suggestion ? uncategorizedFrom(file, suggestion.payee).filter((o) => o.id !== suggestion.transactionId).length : 0
@@ -119,22 +130,19 @@ export function TransactionTable({
             <th></th>
           </tr>
         </thead>
-        {uncleared.length > 0 && (
-          <tbody>
-            <tr className="section-row">
-              <th colSpan={columns}>Uncleared · {uncleared.length}</th>
-            </tr>
-            {uncleared.map(renderRow)}
+        {sections.map((s) => (
+          <tbody key={s.title}>
+            {headings && (
+              <tr className="section-row">
+                <th colSpan={columns}>
+                  {s.title}
+                  {s.count ? ` · ${s.rows.length}` : ''}
+                </th>
+              </tr>
+            )}
+            {s.rows.map(renderRow)}
           </tbody>
-        )}
-        <tbody>
-          {uncleared.length > 0 && rest.length > 0 && (
-            <tr className="section-row">
-              <th colSpan={columns}>Cleared</th>
-            </tr>
-          )}
-          {shown.map(renderRow)}
-        </tbody>
+        ))}
       </table>
       {rest.length > LIMIT && (
         <p className="muted">

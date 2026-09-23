@@ -263,8 +263,8 @@ input.assigned:focus { border-color: var(--accent); background: var(--panel); bo
 .picker-list li.custom { font-style: italic; color: var(--violet); }
 
 /* ---------- payee rule suggestion ---------- */
-.grid tr.rule-suggestion td { background: color-mix(in srgb, var(--violet) 10%, var(--panel)); box-shadow: inset 3px 0 0 var(--violet); padding-top: 6px; padding-bottom: 6px; }
-.grid tr.rule-suggestion td > * { margin-right: 10px; }
+.grid tr.rule-suggestion td { background: color-mix(in srgb, var(--violet) 10%, var(--panel)); box-shadow: inset 3px 0 0 var(--violet); padding-top: 6px; padding-bottom: 6px; text-align: right; }
+.grid tr.rule-suggestion td > * { margin-left: 10px; }
 .grid tr.rule-suggestion button:not(.link) { padding: 4px 10px; font-size: 12px; }
 .grid tr.rule-suggestion button.link { display: inline; color: var(--muted); }
 

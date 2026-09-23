@@ -45,6 +45,7 @@ export function AccountPage() {
         file={file}
         transactions={transactions}
         showAccount={!account}
+        recentlyCategorized={onlyUncategorized ? kept.ids : undefined}
         onCategorized={(id) => setKept((k) => ({ ...k, ids: new Set(k.ids).add(id) }))}
       />
       </div>
