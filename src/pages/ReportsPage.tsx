@@ -3,7 +3,7 @@ import { CumulativeLine } from '../components/CumulativeLine'
 import { MonthlyBars } from '../components/MonthlyBars'
 import { currentMonth, formatMonth } from '../model/dates'
 import { formatCents } from '../model/money'
-import { buildReport, monthRange, type CategoryReport } from '../model/reports'
+import { buildReport, monthRange, type CategoryReport, type GroupReport, type MonthSummary } from '../model/reports'
 import type { Cents } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 
@@ -14,10 +14,14 @@ export function ReportsPage() {
   const updateCategory = useBudget((s) => s.updateCategory)
   const [count, setCount] = useState(12)
   const [showReserves, setShowReserves] = useState(false)
+  const [includeReserves, setIncludeReserves] = useState(true)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const months = useMemo(() => monthRange(currentMonth(), count), [count])
   const report = useMemo(() => buildReport(file, months), [file, months])
-  const last = report.summaries[report.summaries.length - 1]
+  const groups = useMemo(() => (includeReserves ? report.groups : withoutReserves(report.groups)), [report, includeReserves])
+  const summaries = useMemo(() => (includeReserves ? report.summaries : ignoringReserves(report.summaries)), [report, includeReserves])
+  const last = summaries[summaries.length - 1]
+  const avgNet = includeReserves ? report.avgNet : Math.round(summaries.reduce((t, s) => t + s.net, 0) / Math.max(1, summaries.length))
   const paymentIds = useMemo(() => new Set(file.accounts.map((a) => a.paymentCategoryId).filter(Boolean)), [file.accounts])
   const isPaymentCategory = (id: string) => paymentIds.has(id)
 
@@ -39,13 +43,16 @@ export function ReportsPage() {
             </button>
           ))}
         </div>
+        <label className="muted">
+          <input type="checkbox" checked={includeReserves} onChange={(e) => setIncludeReserves(e.target.checked)} /> show reserves
+        </label>
       </header>
       <div className="page-body">
         <div className="stat-row">
           <Stat label="Avg monthly income" value={report.avgIncome} />
           <Stat label="Avg living spending" value={report.avgLiving} />
-          <Stat label="Avg set aside" value={report.avgSetAside} signed />
-          <Stat label="Avg monthly net" value={report.avgNet} signed />
+          {includeReserves && <Stat label="Avg set aside" value={report.avgSetAside} signed />}
+          <Stat label="Avg monthly net" value={avgNet} signed />
           <div className="stat">
             <span className="muted">Savings rate</span>
             <strong className={report.savingsRate !== null && report.savingsRate < 0 ? 'neg' : ''}>
@@ -60,8 +67,8 @@ export function ReportsPage() {
 
         <section className="card">
           <h3>Income vs living spending</h3>
-          <MonthlyBars summaries={report.summaries} />
-          <CumulativeLine summaries={report.summaries} />
+          <MonthlyBars summaries={summaries} />
+          <CumulativeLine summaries={summaries} />
         </section>
 
         <section className="card">
@@ -121,14 +128,18 @@ export function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            <SummaryRow label="Income" title="Income category plus money arriving directly in categories" values={report.summaries.map((s) => s.income)} />
-            <SummaryRow label="Living spending" title="Net outflow from non-reserve categories" values={report.summaries.map((s) => s.living)} />
-            <SummaryRow label="Set aside" title="Assigned to reserves plus inflows landing in them" values={report.summaries.map((s) => s.setAside)} signed />
-            <SummaryRow label="Drawn from reserves" title="Spent out of reserve categories; already counted when set aside" values={report.summaries.map((s) => s.drawn)} />
-            <SummaryRow label="Net" title="Income − living − set aside" values={report.summaries.map((s) => s.net)} signed />
-            <SummaryRow label="Cumulative net" values={report.summaries.map((s) => s.cumulativeNet)} signed noTotals />
+            <SummaryRow label="Income" title="Income category plus money arriving directly in categories" values={summaries.map((s) => s.income)} />
+            <SummaryRow label="Living spending" title="Net outflow from non-reserve categories" values={summaries.map((s) => s.living)} />
+            {includeReserves && (
+              <>
+                <SummaryRow label="Set aside" title="Assigned to reserves plus inflows landing in them" values={summaries.map((s) => s.setAside)} signed />
+                <SummaryRow label="Drawn from reserves" title="Spent out of reserve categories; already counted when set aside" values={summaries.map((s) => s.drawn)} />
+              </>
+            )}
+            <SummaryRow label="Net" title={includeReserves ? 'Income − living − set aside' : 'Income − living'} values={summaries.map((s) => s.net)} signed />
+            <SummaryRow label="Cumulative net" values={summaries.map((s) => s.cumulativeNet)} signed noTotals />
           </tbody>
-          {report.groups.map((g) => {
+          {groups.map((g) => {
             const max = Math.max(1, ...g.categories.flatMap((c) => c.byMonth))
             return (
               <tbody key={g.group.id}>
@@ -169,6 +180,28 @@ export function ReportsPage() {
       </div>
     </>
   )
+}
+
+/** Month summaries as if reserves did not exist: nothing set aside or drawn, net is income minus living. */
+function ignoringReserves(summaries: MonthSummary[]): MonthSummary[] {
+  let cumulative = 0
+  return summaries.map((s) => {
+    const net = s.income - s.living
+    cumulative += net
+    return { ...s, setAside: 0, drawn: 0, net, cumulativeNet: cumulative }
+  })
+}
+
+/** Drop reserve categories from each group and recompute the group totals from what is left. */
+function withoutReserves(groups: GroupReport[]): GroupReport[] {
+  return groups
+    .map((g) => {
+      const categories = g.categories.filter((c) => !c.category.reserve)
+      const byMonth = g.byMonth.map((_, i) => categories.reduce((t, c) => t + c.byMonth[i], 0))
+      const total = byMonth.reduce((t, v) => t + v, 0)
+      return { ...g, categories, byMonth, total, average: byMonth.length ? Math.round(total / byMonth.length) : 0 }
+    })
+    .filter((g) => g.categories.length > 0)
 }
 
 function SummaryRow({

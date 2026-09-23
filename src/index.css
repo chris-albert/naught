@@ -324,6 +324,7 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .chart-axis { fill: var(--muted); font-size: 11px; }
 .series-income { fill: var(--series-income); }
 .series-spending { fill: var(--series-spending); }
+.series-set-aside { fill: color-mix(in srgb, var(--series-spending) 45%, transparent); }
 .series-net-line { fill: none; stroke: var(--series-income); stroke-width: 2; stroke-linejoin: round; }
 .series-net-area { fill: var(--series-income); opacity: 0.12; }
 .series-net-dot { fill: var(--panel); stroke: var(--series-income); stroke-width: 2; }
@@ -340,6 +341,7 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
 .swatch.series-income { background: var(--series-income); }
 .swatch.series-spending { background: var(--series-spending); }
+.swatch.series-set-aside { background: color-mix(in srgb, var(--series-spending) 45%, transparent); }
 .chart-tooltip { color: var(--text); margin-left: auto; }
 .movers { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 24px; }
 .movers li { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--border); }
