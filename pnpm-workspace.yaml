@@ -1,7 +1,2 @@
 allowBuilds:
   esbuild: true
-  workerd: true
-# Worker Previews need wrangler >= 4.135 (released 2026-09-18), newer than pnpm's
-# default minimum release age. Drop this once it has aged.
-minimumReleaseAgeExclude:
-  - wrangler@4.136.3
