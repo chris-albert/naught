@@ -294,6 +294,9 @@ input.inline:hover { border-color: var(--border); background: var(--panel-2); }
 button.link.danger { color: var(--neg); }
 .add-account { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .add-account input:not([type='checkbox']) { flex: 1; min-width: 180px; }
+.add-transaction { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0; }
+.add-transaction .picker-button { border-color: var(--border); padding: 6px 10px; border-radius: 8px; min-width: 160px; }
+.add-transaction input.amount { width: 110px; text-align: right; }
 
 .row-actions { width: 1%; }
 .row-actions button.link { opacity: 0; padding: 0 6px; }

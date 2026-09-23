@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { AddTransactionForm } from '../components/AddTransactionForm'
 import { ReconcilePanel } from '../components/ReconcilePanel'
 import { TransactionTable } from '../components/TransactionTable'
 import { accountBalance } from '../model/budgetMath'
@@ -11,6 +12,7 @@ export function AccountPage() {
   const [params] = useSearchParams()
   const onlyUncategorized = params.get('filter') === 'uncategorized'
   const file = useBudget((s) => s.file)!
+  const [adding, setAdding] = useState(false)
   const account = id ? file.accounts.find((a) => a.id === id) : undefined
   const inScope = account ? file.transactions.filter((t) => t.accountId === account.id) : file.transactions
   const uncategorized = inScope.filter((t) => !t.categoryId && !t.transferAccountId)
@@ -38,9 +40,15 @@ export function AccountPage() {
             {uncategorized.length} uncategorized {onlyUncategorized ? '· show all' : ''}
           </Link>
         )}
+        {account && (
+          <button className="secondary" onClick={() => setAdding(!adding)}>
+            {adding ? 'Done adding' : 'Add transaction'}
+          </button>
+        )}
       </header>
       <div className="page-body">
       {account && <ReconcilePanel file={file} accountId={account.id} />}
+      {account && adding && <AddTransactionForm file={file} accountId={account.id} />}
       <TransactionTable
         file={file}
         transactions={transactions}
