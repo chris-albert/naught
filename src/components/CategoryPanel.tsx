@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { CategoryRow } from '../model/budgetMath'
+import { monthOf } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
 import type { BudgetFile, Cents, MonthKey } from '../model/types'
 import { useBudget } from '../store/budgetStore'
@@ -42,6 +44,14 @@ export function CategoryPanel({
 
   const { category } = row
   const group = file.categoryGroups.find((g) => g.id === category.groupId)
+  // Same transactions the Activity column counts: this month, on-budget accounts.
+  const transactions = useMemo(() => {
+    const onBudget = new Set(file.accounts.filter((a) => a.onBudget).map((a) => a.id))
+    return file.transactions
+      .filter((t) => t.categoryId === category.id && onBudget.has(t.accountId) && monthOf(t.date) === month)
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+  }, [file.transactions, file.accounts, category.id, month])
+  const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
   const target = category.target
   const toGo = targetShortfall(row)
   const over = target === undefined ? 0 : Math.max(0, row.assigned - target)
@@ -138,6 +148,25 @@ export function CategoryPanel({
       </section>
 
       <section>
+        <h4>Transactions this month{transactions.length > 0 && ` · ${transactions.length}`}</h4>
+        {transactions.length === 0 ? (
+          <p className="muted">Nothing yet.</p>
+        ) : (
+          <ul className="panel-transactions">
+            {transactions.map((t) => (
+              <li key={t.id}>
+                <span className="muted">{shortDate(t.date)}</span>
+                <Link to={`/app/accounts/${t.accountId}`} title={accountName.get(t.accountId)}>
+                  {t.payee || 'No payee'}
+                </Link>
+                <span className={`num ${t.amount < 0 ? '' : 'pos'}`}>{formatCents(t.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
         <h4>Options</h4>
         <label className="option">
           <input type="checkbox" checked={!!category.reserve} onChange={(e) => updateCategory(category.id, { reserve: e.target.checked })} />
@@ -156,4 +185,10 @@ export function CategoryPanel({
       </section>
     </aside>
   )
+}
+
+/** "Sep 14" from an ISO date, without timezone drift. */
+function shortDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }

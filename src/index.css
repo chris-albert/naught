@@ -345,6 +345,12 @@ input.target-amount { flex: 1; text-align: right; }
 .target-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.2s ease; }
 .target-bar.under > span { background: var(--warn); }
 .target-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
+.panel-transactions { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
+.panel-transactions li { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.panel-transactions li:last-child { border-bottom: none; }
+.panel-transactions li .muted { font-size: 12px; }
+.panel-transactions li a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-transactions li a:hover { color: var(--accent); }
 .slideover label.option { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; }
 .slideover label.option input { margin-top: 2px; }
 .slideover label.option small { display: block; font-size: 12px; line-height: 1.35; }
