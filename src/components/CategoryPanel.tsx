@@ -170,7 +170,7 @@ export function CategoryPanel({
       <section>
         <h4>
           <button type="button" className={`link toggle ${showOptions ? 'open' : ''}`} onClick={() => setShowOptions(!showOptions)}>
-            <span className="chevron">▾</span> Options
+            <span className="chevron" /> Options
           </button>
         </h4>
         {showOptions && (
