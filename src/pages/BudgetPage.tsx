@@ -78,11 +78,17 @@ export function BudgetPage() {
               g.rows
                 .filter((r) => showHidden || !r.category.hidden)
                 .map((r) => (
-                <tr key={r.category.id} className={r.category.id === selectedId ? 'selected' : ''}>
-                  <td className="category-name">
-                    <button type="button" className="link" onClick={() => setSelectedId(r.category.id === selectedId ? null : r.category.id)}>
-                      {r.category.name}
-                    </button>
+                <tr
+                  key={r.category.id}
+                  className={`category-row ${r.category.id === selectedId ? 'selected' : ''}`}
+                  onClick={(e) => {
+                    // The assigned input and the available pill have their own jobs.
+                    if ((e.target as HTMLElement).closest('input, button')) return
+                    setSelectedId(r.category.id === selectedId ? null : r.category.id)
+                  }}
+                >
+                  <td>
+                    {r.category.name}
                     {targetShortfall(r) > 0 && <span className="target-dot" title={`${formatCents(targetShortfall(r))} to reach target`} />}
                   </td>
                   <td className={`num ${tint(r.assigned)}`}>
