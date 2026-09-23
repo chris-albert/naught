@@ -310,6 +310,55 @@ dialog.confirm::backdrop { background: rgba(10, 14, 20, 0.5); backdrop-filter: b
 .confirm-body p { margin: 0 0 18px; }
 .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ---------- category panel (budget page) ---------- */
+.budget-body { display: flex; gap: 16px; overflow: hidden; padding-bottom: 0; }
+.budget-table { flex: 1; min-width: 0; overflow: auto; padding-bottom: 48px; }
+.grid tbody tr.category-row { cursor: pointer; }
+.grid tbody tr.selected { background: color-mix(in srgb, var(--accent-soft) 70%, var(--panel)); box-shadow: inset 3px 0 0 var(--accent); }
+.grid tbody tr.selected td { background: transparent; }
+.grid tbody tr.selected td:first-child { font-weight: 600; }
+.target-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: 7px; vertical-align: 1px; }
+
+.slideover {
+  flex: none; width: 340px; overflow: auto; margin-bottom: 24px; padding: 18px 20px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-lg);
+  animation: slide-in 0.18s ease;
+}
+@keyframes slide-in { from { transform: translateX(24px); opacity: 0; } }
+.slideover-head { display: flex; align-items: flex-start; gap: 8px; }
+.slideover-head h3 { margin: 0 0 2px; font-size: 18px; }
+.slideover-head .muted { font-size: 12px; }
+.slideover-head button.close { margin-left: auto; font-size: 20px; line-height: 1; padding: 0 6px; color: var(--muted); }
+.slideover-head button.close:hover { color: var(--text); }
+.slideover section { margin-top: 20px; }
+.slideover h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.slideover p { margin: 6px 0 0; font-size: 13px; line-height: 1.4; }
+.slideover-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-variant-numeric: tabular-nums; }
+.slideover-stats > div { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; background: var(--panel-2); border-radius: 10px; }
+.slideover-stats .muted { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.slideover-stats strong { font-size: 15px; }
+.target-row { display: flex; align-items: center; gap: 8px; }
+input.target-amount { flex: 1; text-align: right; }
+.target-row button.link { color: var(--muted); font-weight: 500; }
+.target-row button.link:hover { color: var(--neg); }
+.target-bar { height: 6px; margin-top: 12px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.target-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.2s ease; }
+.target-bar.under > span { background: var(--warn); }
+.target-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
+.panel-transactions { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
+.panel-transactions li { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.panel-transactions li:last-child { border-bottom: none; }
+.panel-transactions li .muted { font-size: 12px; }
+.panel-transactions li a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-transactions li a:hover { color: var(--accent); }
+.slideover h4 button.toggle { display: inline-flex; align-items: center; gap: 6px; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
+.slideover h4 button.toggle:hover { color: var(--text); }
+.slideover h4 button.toggle .chevron { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid currentColor; transform: rotate(-90deg); transition: transform 0.15s ease; }
+.slideover h4 button.toggle.open .chevron { transform: none; }
+.slideover label.option { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; }
+.slideover label.option input { margin-top: 2px; }
+.slideover label.option small { display: block; font-size: 12px; line-height: 1.35; }
+
 /* ---------- move money popover (Available column) ---------- */
 .move-popover { position: fixed; z-index: 10; width: 320px; margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 14px 16px; }
 .move-popover > p { margin: 0 0 12px; font-size: 13px; }

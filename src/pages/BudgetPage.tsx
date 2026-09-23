@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { CategoryPanel, targetShortfall } from '../components/CategoryPanel'
 import { MoveMoneyPopover, type MoveTarget } from '../components/MoveMoneyPopover'
 import { computeMonth } from '../model/budgetMath'
 import { addMonths, currentMonth, formatMonth } from '../model/dates'
@@ -14,6 +15,7 @@ export function BudgetPage() {
   const [showHidden, setShowHidden] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const toggleGroup = (id: string) => {
     const next = new Set(collapsed)
@@ -25,6 +27,7 @@ export function BudgetPage() {
 
   const budget = computeMonth(file, month)
   const groups = budget.groups.filter((g) => showHidden || !g.group.hidden)
+  const selected = selectedId ? budget.groups.flatMap((g) => g.rows).find((r) => r.category.id === selectedId) : undefined
 
   return (
     <>
@@ -50,8 +53,8 @@ export function BudgetPage() {
           <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} /> show hidden
         </label>
       </header>
-      <div className="page-body">
-
+      <div className="page-body budget-body">
+      <div className="budget-table">
       <table className="grid budget">
         <thead>
           <tr>
@@ -75,8 +78,19 @@ export function BudgetPage() {
               g.rows
                 .filter((r) => showHidden || !r.category.hidden)
                 .map((r) => (
-                <tr key={r.category.id}>
-                  <td>{r.category.name}</td>
+                <tr
+                  key={r.category.id}
+                  className={`category-row ${r.category.id === selectedId ? 'selected' : ''}`}
+                  onClick={(e) => {
+                    // The assigned input and the available pill have their own jobs.
+                    if ((e.target as HTMLElement).closest('input, button')) return
+                    setSelectedId(r.category.id === selectedId ? null : r.category.id)
+                  }}
+                >
+                  <td>
+                    {r.category.name}
+                    {targetShortfall(r) > 0 && <span className="target-dot" title={`${formatCents(targetShortfall(r))} to reach target`} />}
+                  </td>
                   <td className={`num ${tint(r.assigned)}`}>
                     <AssignedCell value={r.assigned} onChange={(cents) => setAssigned(month, r.category.id, cents)} />
                   </td>
@@ -99,6 +113,10 @@ export function BudgetPage() {
           </tbody>
         ))}
       </table>
+      </div>
+      {selected && (
+        <CategoryPanel key={selected.category.id} file={file} month={month} row={selected} toBudget={budget.toBudget} onClose={() => setSelectedId(null)} />
+      )}
       </div>
       {moveTarget && (
         <MoveMoneyPopover key={moveTarget.category.id} file={file} month={month} target={moveTarget} onClose={() => setMoveTarget(null)} />

@@ -39,6 +39,8 @@ export interface Category {
   hidden: boolean
   /** Savings-style category (vacation fund, buffer, investments). Reports treat money assigned here as set aside, and spending from it as a draw rather than living expense. */
   reserve?: boolean
+  /** Amount to assign every month. Absent means no target. */
+  target?: Cents
 }
 
 export type ClearedState = 'uncleared' | 'cleared' | 'reconciled'

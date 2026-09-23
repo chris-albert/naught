@@ -30,17 +30,17 @@ interface Plan {
 }
 
 const plans: Plan[] = [
-  { category: cat('rent', 'demo-g-bills', 'Rent'), assigned: 165000, spend: { account: checking, day: 1, perMonth: 1, min: 165000, max: 165000, payees: ['Maple Street Apartments'] } },
-  { category: cat('electric', 'demo-g-bills', 'Electric'), assigned: 12000, spend: { account: checking, day: 12, perMonth: 1, min: 6400, max: 11800, payees: ['City Power & Light'] } },
-  { category: cat('internet', 'demo-g-bills', 'Internet'), assigned: 7000, spend: { account: visa, day: 8, perMonth: 1, min: 6999, max: 6999, payees: ['Fiber Co'] } },
-  { category: cat('phone', 'demo-g-bills', 'Phone'), assigned: 5500, spend: { account: visa, day: 19, perMonth: 1, min: 5500, max: 5500, payees: ['Mint Mobile'] } },
-  { category: cat('insurance', 'demo-g-bills', 'Car insurance'), assigned: 14000, spend: { account: checking, day: 4, perMonth: 1, min: 14000, max: 14000, payees: ['Lemonade'] } },
-  { category: cat('groceries', 'demo-g-everyday', 'Groceries'), assigned: 65000, spend: { account: visa, perMonth: 5, min: 6000, max: 13000, payees: ["Trader Joe's", 'Safeway', 'Costco', 'Berkeley Bowl'] } },
+  { category: cat('rent', 'demo-g-bills', 'Rent', false, 165000), assigned: 165000, spend: { account: checking, day: 1, perMonth: 1, min: 165000, max: 165000, payees: ['Maple Street Apartments'] } },
+  { category: cat('electric', 'demo-g-bills', 'Electric', false, 12000), assigned: 12000, spend: { account: checking, day: 12, perMonth: 1, min: 6400, max: 11800, payees: ['City Power & Light'] } },
+  { category: cat('internet', 'demo-g-bills', 'Internet', false, 7000), assigned: 7000, spend: { account: visa, day: 8, perMonth: 1, min: 6999, max: 6999, payees: ['Fiber Co'] } },
+  { category: cat('phone', 'demo-g-bills', 'Phone', false, 5500), assigned: 5500, spend: { account: visa, day: 19, perMonth: 1, min: 5500, max: 5500, payees: ['Mint Mobile'] } },
+  { category: cat('insurance', 'demo-g-bills', 'Car insurance', false, 14000), assigned: 14000, spend: { account: checking, day: 4, perMonth: 1, min: 14000, max: 14000, payees: ['Lemonade'] } },
+  { category: cat('groceries', 'demo-g-everyday', 'Groceries', false, 65000), assigned: 65000, spend: { account: visa, perMonth: 5, min: 6000, max: 13000, payees: ["Trader Joe's", 'Safeway', 'Costco', 'Berkeley Bowl'] } },
   { category: cat('dining', 'demo-g-everyday', 'Dining out'), assigned: 30000, spend: { account: visa, perMonth: 6, min: 1400, max: 5000, payees: ['Chipotle', 'Pho 88', 'Blue Bottle', 'Zachary’s Pizza', 'Sushi Ran'] } },
   { category: cat('gas', 'demo-g-everyday', 'Gas'), assigned: 13500, spend: { account: visa, perMonth: 2, min: 4200, max: 6600, payees: ['Shell', 'Chevron'] } },
   { category: cat('household', 'demo-g-everyday', 'Household'), assigned: 14500, spend: { account: visa, perMonth: 2, min: 1800, max: 7200, payees: ['Target', 'Ace Hardware', 'Amazon'] } },
   { category: cat('fun', 'demo-g-everyday', 'Fun money'), assigned: 18000, spend: { account: visa, perMonth: 3, min: 1200, max: 5900, payees: ['Steam', 'AMC Theatres', 'Moe’s Books', 'Spotify'] } },
-  { category: cat('vacation', 'demo-g-goals', 'Vacation', true), assigned: 40000 },
+  { category: cat('vacation', 'demo-g-goals', 'Vacation', true, 50000), assigned: 40000 },
   { category: cat('emergency', 'demo-g-goals', 'Emergency fund', true), assigned: 50000 },
   { category: cat('house', 'demo-g-goals', 'House down payment', true), assigned: 85000 },
 ]
@@ -65,8 +65,8 @@ const SAVINGS_TRANSFER: Cents = 200000 // roughly what the goals set aside
 const OPENING_CHECKING: Cents = 320000
 const OPENING_SAVINGS: Cents = 850000
 
-function cat(id: string, groupId: string, name: string, reserve = false): Category {
-  return { id: `demo-${id}`, groupId, name, hidden: false, ...(reserve ? { reserve } : {}) }
+function cat(id: string, groupId: string, name: string, reserve = false, target?: Cents): Category {
+  return { id: `demo-${id}`, groupId, name, hidden: false, ...(reserve ? { reserve } : {}), ...(target ? { target } : {}) }
 }
 
 /** mulberry32: small seeded PRNG so the demo is deterministic. */

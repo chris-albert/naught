@@ -13,7 +13,11 @@ Early skeleton. Working today:
   only for writing; other browsers get an in-memory mode plus "Download backup").
 - Import a YNAB budget export (the JSON from the YNAB API / `ynab-export`).
 - Budget page: month navigation, To Budget, per-category assigned / activity /
-  available with editable assignments. Autosaves to the file.
+  available with editable assignments. Autosaves to the file. Clicking a
+  category name opens a panel with its numbers for the month, a monthly
+  target (how much it needs assigned each month), a one-click "Assign" that
+  moves the shortfall from To Budget, and the reserve / hidden flags. A dot
+  next to the name marks categories still short of their target.
 - Account pages with transaction lists; payee and category are editable.
 - Reconciliation: each synced account shows the bank's balance against the
   sum of cleared transactions, lists uncleared and unconfirmed entries that
