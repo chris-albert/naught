@@ -9,7 +9,18 @@ import { PayeePicker } from './PayeePicker'
 
 const LIMIT = 500
 
-export function TransactionTable({ file, transactions, showAccount }: { file: BudgetFile; transactions: Transaction[]; showAccount: boolean }) {
+export function TransactionTable({
+  file,
+  transactions,
+  showAccount,
+  onCategorized,
+}: {
+  file: BudgetFile
+  transactions: Transaction[]
+  showAccount: boolean
+  /** Called after a category is picked by hand, so the page can keep the row visible under a filter. */
+  onCategorized?: (transactionId: string) => void
+}) {
   const updateTransaction = useBudget((s) => s.updateTransaction)
   const deleteTransaction = useBudget((s) => s.deleteTransaction)
   const setPayeeRule = useBudget((s) => s.setPayeeRule)
@@ -19,6 +30,7 @@ export function TransactionTable({ file, transactions, showAccount }: { file: Bu
   const [suggestion, setSuggestion] = useState<{ transactionId: string; payee: string; categoryId: string } | null>(null)
   const categorize = (t: Transaction, categoryId: string | null) => {
     updateTransaction(t.id, { categoryId })
+    onCategorized?.(t.id)
     const offer = categoryId && t.payee && categoryForPayee(file, t.payee) !== categoryId
     setSuggestion(offer ? { transactionId: t.id, payee: t.payee, categoryId } : null)
   }
@@ -33,8 +45,7 @@ export function TransactionTable({ file, transactions, showAccount }: { file: Bu
   const shown = rest.slice(0, LIMIT)
   const columns = showAccount ? 7 : 6
 
-  // The prompt sits under its row, or at the top when the row has left the list (uncategorized filter).
-  const suggestionInList = suggestion !== null && transactions.some((t) => t.id === suggestion.transactionId)
+  // Rendered under the row it belongs to.
   const others = suggestion ? uncategorizedFrom(file, suggestion.payee).filter((o) => o.id !== suggestion.transactionId).length : 0
   const suggestionRow = suggestion && (
     <tr key="rule-suggestion" className="rule-suggestion">
@@ -108,7 +119,6 @@ export function TransactionTable({ file, transactions, showAccount }: { file: Bu
             <th></th>
           </tr>
         </thead>
-        {suggestionRow && !suggestionInList && <tbody>{suggestionRow}</tbody>}
         {uncleared.length > 0 && (
           <tbody>
             <tr className="section-row">
