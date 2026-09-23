@@ -28,9 +28,9 @@ export function BudgetPage() {
     <>
       <header className="page-header">
         <div className="month-nav">
-          <Link to={`/budget/${addMonths(month, -1)}`}>‹</Link>
+          <Link to={`/app/budget/${addMonths(month, -1)}`}>‹</Link>
           <h2>{formatMonth(month)}</h2>
-          <Link to={`/budget/${addMonths(month, 1)}`}>›</Link>
+          <Link to={`/app/budget/${addMonths(month, 1)}`}>›</Link>
         </div>
         <div className={`stat to-budget ${budget.toBudget < 0 ? 'over' : ''}`}>
           <span className="muted">To budget</span>

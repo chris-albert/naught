@@ -43,10 +43,39 @@ pnpm install
 pnpm dev        # http://localhost:5173
 pnpm test       # vitest
 pnpm typecheck
-pnpm build      # static output in dist/, deployable to Cloudflare Pages
+pnpm build      # static output in dist/
 ```
 
-`public/_redirects` makes Cloudflare Pages serve `index.html` for every route.
+Routes: `/` is the landing page, `/demo` opens six months of generated
+sample data in memory (`src/demo/sampleBudget.ts`), and the app lives under
+`/app`.
+
+## Deployment
+
+The site is a Cloudflare Worker with static assets (`wrangler.jsonc`), served
+at https://naught.lbert.io. GitHub Actions runs the tests on every push and
+PR (`.github/workflows/ci.yml`); building and deploying is done by
+[Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/),
+which is configured once in the Cloudflare dashboard rather than in the repo:
+
+1. Workers & Pages → Create → connect the `chris-albert/naught` GitHub repo.
+2. Production branch `main`. Build command `pnpm test && pnpm build`, deploy
+   command `npx wrangler deploy`.
+3. Enable preview builds. Preview command `npx wrangler preview`.
+4. Add a custom domain: `wrangler.jsonc` declares `naught.lbert.io`, which the
+   first deploy creates in the `lbert.io` zone.
+
+Every push to `main` deploys production. Every other branch gets its own
+[Worker Preview](https://developers.cloudflare.com/workers/previews/) at
+`<branch>.naught.lbert.io` (Cloudflare creates the wildcard DNS record and
+certificate; the first one can take a few minutes) and the URL is posted on
+the pull request. The hostname is stable for the life of the branch, so
+browser-side state on a preview (the remembered file handle, SimpleFIN
+credentials, theme) survives new pushes but stays separate from production
+and from other branches.
+
+`pnpm cf:deploy` and `pnpm cf:preview` do the same from a machine that has
+run `wrangler login`.
 
 ## Layout
 
@@ -55,6 +84,7 @@ pnpm build      # static output in dist/, deployable to Cloudflare Pages
 - `src/storage/fileStore.ts` – file handle persistence and read/write.
 - `src/store/budgetStore.ts` – in-memory state (zustand) with debounced autosave.
 - `src/import/ynab.ts` – YNAB JSON importer.
+- `src/demo/sampleBudget.ts` – deterministic sample data for `/demo`.
 - `src/pages/`, `src/components/` – UI.
 
 ## Budget rules
