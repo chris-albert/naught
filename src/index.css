@@ -348,6 +348,10 @@ input.target-amount { flex: 1; text-align: right; }
 .panel-transactions { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
 .panel-transactions li { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
 .panel-transactions li:last-child { border-bottom: none; }
+.panel-transactions li.head { border-bottom: 1px solid var(--border); padding: 0 0 4px; }
+.panel-transactions li.head button.link { padding: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.panel-transactions li.head button.link:hover, .panel-transactions li.head button.link.active { color: var(--text); }
+.panel-transactions li.head .sort-arrow { font-size: 8px; margin-left: 4px; vertical-align: 1px; }
 .panel-transactions li .muted { font-size: 12px; }
 .panel-transactions li a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-transactions li a:hover { color: var(--accent); }

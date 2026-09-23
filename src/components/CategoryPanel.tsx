@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { CategoryRow } from '../model/budgetMath'
 import { monthOf } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
-import type { BudgetFile, Cents, MonthKey } from '../model/types'
+import type { BudgetFile, Cents, MonthKey, Transaction } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 
 /** Shortfall against the category's monthly target, if it has one. */
@@ -34,6 +34,7 @@ export function CategoryPanel({
   const moveAssigned = useBudget((s) => s.moveAssigned)
   const [targetText, setTargetText] = useState<string | null>(null)
   const [showOptions, setShowOptions] = useState(false)
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'date', dir: -1 })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -50,8 +51,8 @@ export function CategoryPanel({
     const onBudget = new Set(file.accounts.filter((a) => a.onBudget).map((a) => a.id))
     return file.transactions
       .filter((t) => t.categoryId === category.id && onBudget.has(t.accountId) && monthOf(t.date) === month)
-      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  }, [file.transactions, file.accounts, category.id, month])
+      .sort((a, b) => sort.dir * compare(a, b, sort.key) || compare(b, a, 'date'))
+  }, [file.transactions, file.accounts, category.id, month, sort])
   const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
   const target = category.target
   const toGo = targetShortfall(row)
@@ -89,7 +90,7 @@ export function CategoryPanel({
         </div>
         <div>
           <span className="muted">Available</span>
-          <strong className={row.available < 0 ? 'neg' : ''}>{formatCents(row.available)}</strong>
+          <strong className={row.available < 0 ? 'neg' : row.available > 0 ? 'pos' : ''}>{formatCents(row.available)}</strong>
         </div>
       </section>
 
@@ -154,6 +155,19 @@ export function CategoryPanel({
           <p className="muted">Nothing yet.</p>
         ) : (
           <ul className="panel-transactions">
+            <li className="head">
+              {SORT_COLUMNS.map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`link ${key === 'amount' ? 'num' : ''} ${sort.key === key ? 'active' : ''}`}
+                  onClick={() => setSort(sort.key === key ? { key, dir: sort.dir === 1 ? -1 : 1 } : { key, dir: DEFAULT_DIR[key] })}
+                >
+                  {label}
+                  {sort.key === key && <span className="sort-arrow">{sort.dir === 1 ? '▲' : '▼'}</span>}
+                </button>
+              ))}
+            </li>
             {transactions.map((t) => (
               <li key={t.id}>
                 <span className="muted">{shortDate(t.date)}</span>
@@ -194,6 +208,23 @@ export function CategoryPanel({
       </section>
     </aside>
   )
+}
+
+type SortKey = 'date' | 'payee' | 'amount'
+
+const SORT_COLUMNS: [SortKey, string][] = [
+  ['date', 'Date'],
+  ['payee', 'Payee'],
+  ['amount', 'Amount'],
+]
+
+/** First click on a column: newest first, A to Z, or biggest spend first. */
+const DEFAULT_DIR: Record<SortKey, 1 | -1> = { date: -1, payee: 1, amount: 1 }
+
+function compare(a: Transaction, b: Transaction, key: SortKey): number {
+  if (key === 'amount') return a.amount - b.amount
+  if (key === 'payee') return a.payee.localeCompare(b.payee, undefined, { sensitivity: 'base' })
+  return a.date < b.date ? -1 : a.date > b.date ? 1 : 0
 }
 
 /** "Sep 14" from an ISO date, without timezone drift. */
