@@ -459,6 +459,8 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .category-trend { max-width: 900px; }
 .chart-average { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.6; }
 .swatch.swatch-average { background: none; border-top: 2px dashed var(--text); height: 0; border-radius: 0; opacity: 0.6; vertical-align: 2px; }
+.chart-target { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.swatch.swatch-target { background: none; border-top: 2px dashed var(--accent); height: 0; border-radius: 0; vertical-align: 2px; }
 
 /* ---------- reconcile ---------- */
 .reconcile { border-left: 4px solid var(--accent); }
