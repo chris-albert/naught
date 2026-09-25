@@ -23,7 +23,11 @@ export interface CategoryReport {
   byMonth: Cents[]
   total: Cents
   average: Cents
-  /** Last month minus the average of the months before it. */
+  /** Net money out through `throughDay` of the last month. */
+  soFar: Cents
+  /** Average net money out through `throughDay` of the months before the last one. */
+  soFarAverage: Cents
+  /** soFar - soFarAverage */
   deltaVsAverage: Cents
 }
 
@@ -45,7 +49,7 @@ export interface Report {
   avgNet: Cents
   /** (income - living) / income: the share of income not spent on living, or null without income. */
   savingsRate: number | null
-  /** Non-reserve categories with the biggest swing last month versus their earlier average. */
+  /** Non-reserve categories with the biggest swing in the last month, through `throughDay`, versus the same window in the earlier months. */
   movers: CategoryReport[]
 }
 
@@ -66,8 +70,12 @@ export function monthRange(end: MonthKey, count: number): MonthKey[] {
  * payment categories are excluded, and so are transfers between your own
  * accounts even when categorized (moving money to an investment account is not
  * spending, and moving it back is not income).
+ *
+ * `throughDay` is the day of month the last month runs through (today, when the
+ * last month is the current one). Movers compare spending through that day with
+ * the same window in earlier months, so a half-finished month is not read as low.
  */
-export function buildReport(file: BudgetFile, months: MonthKey[]): Report {
+export function buildReport(file: BudgetFile, months: MonthKey[], throughDay = 31): Report {
   const index = new Map(months.map((m, i) => [m, i]))
   const onBudget = new Set(file.accounts.filter((a) => a.onBudget).map((a) => a.id))
   const paymentCategoryIds = new Set(file.accounts.map((a) => a.paymentCategoryId).filter(Boolean))
@@ -76,9 +84,11 @@ export function buildReport(file: BudgetFile, months: MonthKey[]): Report {
 
   const outflow = new Map<string, Cents[]>() // positive: money out
   const inflow = new Map<string, Cents[]>() // positive: money in
+  const soFar = new Map<string, Cents[]>() // net money out through throughDay
   for (const c of categories) {
     outflow.set(c.id, months.map(() => 0))
     inflow.set(c.id, months.map(() => 0))
+    soFar.set(c.id, months.map(() => 0))
   }
   const incomeCat = months.map(() => 0)
   const uncategorized = months.map(() => 0)
@@ -92,6 +102,7 @@ export function buildReport(file: BudgetFile, months: MonthKey[]): Report {
     } else if (t.categoryId && byId.has(t.categoryId)) {
       if (t.amount < 0) outflow.get(t.categoryId)![i] -= t.amount
       else inflow.get(t.categoryId)![i] += t.amount
+      if (dayOf(t.date) <= throughDay) soFar.get(t.categoryId)![i] -= t.amount
     } else if (!t.categoryId && !t.transferAccountId) {
       uncategorized[i]++
     }
@@ -99,7 +110,10 @@ export function buildReport(file: BudgetFile, months: MonthKey[]): Report {
 
   const categoryReport = (c: Category): CategoryReport => {
     const byMonth = months.map((_, i) => outflow.get(c.id)![i] - inflow.get(c.id)![i])
-    return { category: c, byMonth, total: sum(byMonth), average: avg(byMonth), deltaVsAverage: lastVsPrior(byMonth) }
+    const window = soFar.get(c.id)!
+    const last = window[window.length - 1] ?? 0
+    const soFarAverage = avg(window.slice(0, -1))
+    return { category: c, byMonth, total: sum(byMonth), average: avg(byMonth), soFar: last, soFarAverage, deltaVsAverage: last - soFarAverage }
   }
 
   const groups: GroupReport[] = file.categoryGroups
@@ -171,7 +185,6 @@ function avg(xs: number[]): number {
   return xs.length ? Math.round(sum(xs) / xs.length) : 0
 }
 
-function lastVsPrior(xs: number[]): number {
-  if (xs.length < 2) return 0
-  return xs[xs.length - 1] - avg(xs.slice(0, -1))
+function dayOf(isoDate: string): number {
+  return Number(isoDate.slice(8, 10))
 }

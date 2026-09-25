@@ -19,7 +19,8 @@ export function ReportsPage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [openCategory, setOpenCategory] = useState<string | null>(null)
   const months = useMemo(() => monthRange(currentMonth(), count), [count])
-  const report = useMemo(() => buildReport(file, months), [file, months])
+  const today = new Date().getDate()
+  const report = useMemo(() => buildReport(file, months, today), [file, months, today])
   const groups = useMemo(() => (includeReserves ? report.groups : withoutReserves(report.groups)), [report, includeReserves])
   const summaries = useMemo(() => (includeReserves ? report.summaries : ignoringReserves(report.summaries)), [report, includeReserves])
   const last = summaries[summaries.length - 1]
@@ -106,8 +107,11 @@ export function ReportsPage() {
 
         {report.movers.length > 0 && (
           <section className="card">
-            <h3>Biggest swings in {formatMonth(last.month)}</h3>
-            <p className="muted">Compared with each category's average over the earlier months in this range.</p>
+            <h3>Biggest swings so far in {formatMonth(last.month)}</h3>
+            <p className="muted">
+              Spending through the {ordinal(today)}, compared with each category's average through the {ordinal(today)} of the earlier months in this
+              range.
+            </p>
             <ul className="movers">
               {report.movers.map((c) => (
                 <Mover key={c.category.id} c={c} />
@@ -254,7 +258,6 @@ function Stat({ label, value, signed = false }: { label: string; value: Cents; s
 
 function Mover({ c }: { c: CategoryReport }) {
   const up = c.deltaVsAverage > 0
-  const last = c.byMonth[c.byMonth.length - 1]
   return (
     <li>
       <span className="mover-name">{c.category.name}</span>
@@ -262,7 +265,7 @@ function Mover({ c }: { c: CategoryReport }) {
         {up ? '▲' : '▼'} {formatCents(Math.abs(c.deltaVsAverage))}
       </span>
       <span className="muted">
-        {formatCents(last)} vs {formatCents(last - c.deltaVsAverage)} avg
+        {formatCents(c.soFar)} vs {formatCents(c.soFarAverage)} avg
       </span>
     </li>
   )
@@ -271,6 +274,11 @@ function Mover({ c }: { c: CategoryReport }) {
 /** Report cells: money out as a plain number, net money in as a green "+" figure. */
 const cell = (v: Cents) =>
   v === 0 ? <span className="muted">–</span> : v < 0 ? <span className="soft-pos">+{formatCents(-v)}</span> : formatCents(v)
+
+function ordinal(n: number): string {
+  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'] as const)[n % 10] ?? 'th'
+  return `${n}${suffix}`
+}
 
 function shortMonth(month: string): string {
   const [y, m] = month.split('-').map(Number)
