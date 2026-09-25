@@ -5,6 +5,8 @@ import { monthOf } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
 import type { BudgetFile, Cents, MonthKey, Transaction } from '../model/types'
 import { useBudget } from '../store/budgetStore'
+import { NameInput } from './NameInput'
+import { Picker } from './Picker'
 
 /** Shortfall against the category's monthly target, if it has one. */
 export function targetShortfall(row: CategoryRow): Cents {
@@ -34,6 +36,7 @@ export function CategoryPanel({
   const moveAssigned = useBudget((s) => s.moveAssigned)
   const [targetText, setTargetText] = useState<string | null>(null)
   const [showOptions, setShowOptions] = useState(false)
+  const [renaming, setRenaming] = useState(false)
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'date', dir: -1 })
 
   useEffect(() => {
@@ -46,6 +49,9 @@ export function CategoryPanel({
 
   const { category } = row
   const group = file.categoryGroups.find((g) => g.id === category.groupId)
+  // Payment categories belong to their card; the app keeps them in the credit card group.
+  const isPaymentCategory = file.accounts.some((a) => a.paymentCategoryId === category.id)
+  const groupOptions = file.categoryGroups.map((g) => ({ key: g.id, label: g.name }))
   // Same transactions the Activity column counts: this month, on-budget accounts.
   const transactions = useMemo(() => {
     const onBudget = new Set(file.accounts.filter((a) => a.onBudget).map((a) => a.id))
@@ -71,7 +77,23 @@ export function CategoryPanel({
     <aside className="slideover">
       <div className="slideover-head">
         <div>
-          <h3>{category.name}</h3>
+          {renaming ? (
+            <NameInput
+              className="rename-category"
+              initial={category.name}
+              onCommit={(name) => {
+                if (name !== category.name) updateCategory(category.id, { name })
+                setRenaming(false)
+              }}
+              onCancel={() => setRenaming(false)}
+            />
+          ) : (
+            <h3>
+              <button type="button" className="link rename-title" title="Rename" onClick={() => setRenaming(true)}>
+                {category.name}
+              </button>
+            </h3>
+          )}
           <span className="muted">{group?.name}</span>
         </div>
         <button type="button" className="link close" aria-label="Close" onClick={onClose}>
@@ -189,6 +211,12 @@ export function CategoryPanel({
         </h4>
         {showOptions && (
           <>
+            {!isPaymentCategory && (
+              <div className="option group-option">
+                <span>Group</span>
+                <Picker options={groupOptions} value={category.groupId} onChange={(groupId) => updateCategory(category.id, { groupId })} />
+              </div>
+            )}
             <label className="option">
               <input type="checkbox" checked={!!category.reserve} onChange={(e) => updateCategory(category.id, { reserve: e.target.checked })} />
               <span>

@@ -318,6 +318,20 @@ dialog.confirm::backdrop { background: rgba(10, 14, 20, 0.5); backdrop-filter: b
 .grid tbody tr.selected { background: color-mix(in srgb, var(--accent-soft) 70%, var(--panel)); box-shadow: inset 3px 0 0 var(--accent); }
 .grid tbody tr.selected td { background: transparent; }
 .grid tbody tr.selected td:first-child { font-weight: 600; }
+/* Inline add / rename on the budget table */
+.grid .group-row .group-actions { display: inline; margin-left: 4px; opacity: 0; }
+.grid .group-row:hover .group-actions { opacity: 1; }
+.grid .group-row .group-actions button.link { display: inline; padding: 0 4px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.grid .group-row .group-actions button.add { font-size: 14px; line-height: 1; }
+.grid .group-row .group-actions button.link:hover { color: var(--accent); }
+.grid .group-row input.inline { min-width: 160px; font-weight: 700; }
+.grid tr.add-row td { padding-top: 2px; padding-bottom: 2px; }
+.grid tr.add-row:hover { background: none; }
+.grid tr.add-row button.add { display: inline; padding: 2px 0; font-size: 12px; font-weight: 500; color: var(--muted); }
+.grid tr.add-row button.add:hover { color: var(--accent); }
+.grid tr.add-row input { min-width: 200px; padding: 3px 8px; }
+.grid tr.add-row.group td { padding-left: 10px; padding-top: 6px; padding-bottom: 6px; }
+.grid tr.add-row.group button.add { font-weight: 600; }
 .target-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: 7px; vertical-align: 1px; }
 
 .slideover {
@@ -328,6 +342,9 @@ dialog.confirm::backdrop { background: rgba(10, 14, 20, 0.5); backdrop-filter: b
 @keyframes slide-in { from { transform: translateX(24px); opacity: 0; } }
 .slideover-head { display: flex; align-items: flex-start; gap: 8px; }
 .slideover-head h3 { margin: 0 0 2px; font-size: 18px; }
+.slideover-head h3 button.rename-title { padding: 0; font: inherit; color: inherit; border-radius: 4px; }
+.slideover-head h3 button.rename-title:hover { color: var(--accent); }
+.slideover-head input.rename-category { font-size: 18px; font-weight: 700; padding: 0 4px; margin: -2px 0 0 -4px; width: 240px; }
 .slideover-head .muted { font-size: 12px; }
 .slideover-head button.close { margin-left: auto; font-size: 20px; line-height: 1; padding: 0 6px; color: var(--muted); }
 .slideover-head button.close:hover { color: var(--text); }
@@ -362,6 +379,8 @@ input.target-amount { flex: 1; text-align: right; }
 .slideover h4 button.toggle.open .chevron { transform: none; }
 .slideover label.option { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; }
 .slideover label.option input { margin-top: 2px; }
+.slideover .group-option { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; font-size: 13px; }
+.slideover .group-option .picker-button { border-color: var(--border); padding: 4px 10px; border-radius: 8px; }
 .slideover label.option small { display: block; font-size: 12px; line-height: 1.35; }
 
 /* ---------- move money popover (Available column) ---------- */
