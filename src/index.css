@@ -431,6 +431,15 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .report thead th:first-child { z-index: 3; }
 .report .group-row th:first-child, .report .total-row th:first-child { background: var(--panel-2); }
 .report tr.uncategorized td:first-child { background: var(--panel); }
+.report .category-row { cursor: pointer; user-select: none; }
+.report .category-row .chevron { display: inline-block; width: 12px; color: var(--muted); transform: rotate(-90deg); transition: transform 0.15s ease; }
+.report .category-row.open .chevron { transform: none; }
+.report .category-row.open td { background: var(--accent-soft); }
+.report .category-detail td { position: static; padding: 12px 16px 8px; background: var(--panel-2); }
+.report .category-detail:hover { background: none; }
+.category-trend { max-width: 900px; }
+.chart-average { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.6; }
+.swatch.swatch-average { background: none; border-top: 2px dashed var(--text); height: 0; border-radius: 0; opacity: 0.6; vertical-align: 2px; }
 
 /* ---------- reconcile ---------- */
 .reconcile { border-left: 4px solid var(--accent); }
