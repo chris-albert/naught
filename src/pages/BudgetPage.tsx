@@ -19,6 +19,8 @@ export function BudgetPage() {
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  /** Group whose "add category" box is open. */
+  const [addingIn, setAddingIn] = useState<string | null>(null)
 
   const toggleGroup = (id: string) => {
     const next = new Set(collapsed)
@@ -26,6 +28,11 @@ export function BudgetPage() {
     else next.add(id)
     setCollapsed(next)
     saveCollapsed(next)
+  }
+
+  const startAdding = (id: string) => {
+    if (collapsed.has(id)) toggleGroup(id)
+    setAddingIn(id)
   }
 
   const budget = computeMonth(file, month)
@@ -77,7 +84,7 @@ export function BudgetPage() {
               }}
             >
               <th>
-                <span className="chevron">▾</span> <GroupName group={g.group} />
+                <span className="chevron">▾</span> <GroupName group={g.group} onAdd={() => startAdding(g.group.id)} />
               </th>
               <th className={`num ${tint(g.assigned)}`}>{formatCents(g.assigned)}</th>
               <th className={`num ${tint(g.activity)}`}>{formatCents(g.activity)}</th>
@@ -119,10 +126,19 @@ export function BudgetPage() {
                   </td>
                 </tr>
               ))}
-            {!collapsed.has(g.group.id) && g.group.name !== CREDIT_CARD_PAYMENTS_GROUP && (
+            {addingIn === g.group.id && (
               <tr className="add-row">
                 <td colSpan={4}>
-                  <InlineAdd label="Add category" placeholder="New category" onAdd={(name) => addCategory(g.group.id, name)} />
+                  <NameInput
+                    placeholder="New category"
+                    initial=""
+                    stayOpen
+                    onCommit={(name) => {
+                      if (name) addCategory(g.group.id, name)
+                      else setAddingIn(null)
+                    }}
+                    onCancel={() => setAddingIn(null)}
+                  />
                 </td>
               </tr>
             )}
@@ -178,8 +194,8 @@ function AssignedCell({ value, onChange }: { value: Cents; onChange: (cents: Cen
   )
 }
 
-/** Group name with a hover "Rename" that swaps it for an input. The credit card group is managed by the app. */
-function GroupName({ group }: { group: CategoryGroup }) {
+/** Group name with hover "Rename" and "+" (add a category) controls. The credit card group is managed by the app. */
+function GroupName({ group, onAdd }: { group: CategoryGroup; onAdd: () => void }) {
   const updateCategoryGroup = useBudget((s) => s.updateCategoryGroup)
   const [editing, setEditing] = useState(false)
 
@@ -188,9 +204,14 @@ function GroupName({ group }: { group: CategoryGroup }) {
     return (
       <>
         {group.name}
-        <button type="button" className="link rename" onClick={() => setEditing(true)}>
-          Rename
-        </button>
+        <span className="group-actions">
+          <button type="button" className="link rename" onClick={() => setEditing(true)}>
+            Rename
+          </button>
+          <button type="button" className="link add" title="Add a category" onClick={onAdd}>
+            +
+          </button>
+        </span>
       </>
     )
   }

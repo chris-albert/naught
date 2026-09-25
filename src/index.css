@@ -318,9 +318,11 @@ dialog.confirm::backdrop { background: rgba(10, 14, 20, 0.5); backdrop-filter: b
 .grid tbody tr.selected td { background: transparent; }
 .grid tbody tr.selected td:first-child { font-weight: 600; }
 /* Inline add / rename on the budget table */
-.grid .group-row button.rename { display: inline; padding: 0 8px; font-size: 11px; font-weight: 500; color: var(--muted); opacity: 0; }
-.grid .group-row:hover button.rename { opacity: 1; }
-.grid .group-row button.rename:hover { color: var(--accent); }
+.grid .group-row .group-actions { display: inline; margin-left: 4px; opacity: 0; }
+.grid .group-row:hover .group-actions { opacity: 1; }
+.grid .group-row .group-actions button.link { display: inline; padding: 0 4px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.grid .group-row .group-actions button.add { font-size: 14px; line-height: 1; }
+.grid .group-row .group-actions button.link:hover { color: var(--accent); }
 .grid .group-row input.inline { min-width: 160px; font-weight: 700; }
 .grid tr.add-row td { padding-top: 2px; padding-bottom: 2px; }
 .grid tr.add-row:hover { background: none; }
