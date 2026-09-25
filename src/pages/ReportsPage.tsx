@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
+import { CategoryTrend } from '../components/CategoryTrend'
 import { CumulativeLine } from '../components/CumulativeLine'
 import { MonthlyBars } from '../components/MonthlyBars'
 import { currentMonth, formatMonth } from '../model/dates'
@@ -16,6 +17,7 @@ export function ReportsPage() {
   const [showReserves, setShowReserves] = useState(false)
   const [includeReserves, setIncludeReserves] = useState(true)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [openCategory, setOpenCategory] = useState<string | null>(null)
   const months = useMemo(() => monthRange(currentMonth(), count), [count])
   const report = useMemo(() => buildReport(file, months), [file, months])
   const groups = useMemo(() => (includeReserves ? report.groups : withoutReserves(report.groups)), [report, includeReserves])
@@ -159,19 +161,31 @@ export function ReportsPage() {
                   g.categories
                     .filter((c) => c.total !== 0)
                     .map((c) => (
-                      <tr key={c.category.id}>
-                        <td>
-                          {c.category.name}
-                          {c.category.reserve && <span className="tag">reserve</span>}
-                        </td>
-                        {c.byMonth.map((v, i) => (
-                          <td key={months[i]} className="num heat" style={{ '--heat': v > 0 ? Math.min(1, v / max) : 0 } as React.CSSProperties}>
-                            {cell(v)}
+                      <Fragment key={c.category.id}>
+                        <tr
+                          className={`category-row ${openCategory === c.category.id ? 'open' : ''}`}
+                          onClick={() => setOpenCategory(openCategory === c.category.id ? null : c.category.id)}
+                        >
+                          <td>
+                            <span className="chevron">▾</span> {c.category.name}
+                            {c.category.reserve && <span className="tag">reserve</span>}
                           </td>
-                        ))}
-                        <td className="num">{formatCents(c.average)}</td>
-                        <td className="num">{formatCents(c.total)}</td>
-                      </tr>
+                          {c.byMonth.map((v, i) => (
+                            <td key={months[i]} className="num heat" style={{ '--heat': v > 0 ? Math.min(1, v / max) : 0 } as React.CSSProperties}>
+                              {cell(v)}
+                            </td>
+                          ))}
+                          <td className="num">{formatCents(c.average)}</td>
+                          <td className="num">{formatCents(c.total)}</td>
+                        </tr>
+                        {openCategory === c.category.id && (
+                          <tr className="category-detail">
+                            <td colSpan={months.length + 3}>
+                              <CategoryTrend report={c} months={months} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
               </tbody>
             )
