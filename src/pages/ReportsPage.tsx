@@ -178,13 +178,7 @@ export function ReportsPage() {
                           <td className="num">{formatCents(c.average)}</td>
                           <td className="num">{formatCents(c.total)}</td>
                         </tr>
-                        {openCategory === c.category.id && (
-                          <tr className="category-detail">
-                            <td colSpan={months.length + 3}>
-                              <CategoryTrend report={c} months={months} />
-                            </td>
-                          </tr>
-                        )}
+                        {openCategory === c.category.id && <CategoryTrend report={c} months={months} />}
                       </Fragment>
                     ))}
               </tbody>
