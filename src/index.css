@@ -149,6 +149,7 @@ code { font-size: 0.9em; background: var(--panel-2); padding: 1px 5px; border-ra
 .month-nav a { font-size: 20px; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); }
 .month-nav a:hover { color: var(--text); border-color: var(--accent); }
 .month-nav h2 { min-width: 190px; text-align: center; }
+.segmented { display: flex; gap: 8px; }
 
 .stat {
   display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums;
