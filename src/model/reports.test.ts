@@ -129,4 +129,13 @@ describe('buildReport', () => {
     expect(byId.food).toMatchObject({ byMonth: [30000, 30000, -3000], soFar: -3000, soFarAverage: 17500, deltaVsAverage: -20500 })
     expect(r.movers.map((c) => c.category.id)).toEqual(['food', 'rent'])
   })
+
+  it('totals monthly targets on visible categories, skipping hidden and payment categories', () => {
+    const f = fixture()
+    f.categories.find((c) => c.id === 'rent')!.target = 150000
+    f.categories.find((c) => c.id === 'vacation')!.target = 20000
+    f.categories.find((c) => c.id === 'pay')!.target = 99999
+    f.categories.push({ id: 'old', groupId: 'g1', name: 'Old', hidden: true, target: 5000 })
+    expect(buildReport(f, ['2026-01']).targets).toBe(170000)
+  })
 })

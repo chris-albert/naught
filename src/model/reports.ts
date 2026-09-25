@@ -47,6 +47,8 @@ export interface Report {
   avgLiving: Cents
   avgSetAside: Cents
   avgNet: Cents
+  /** Sum of the monthly targets on visible categories: what the plan spends before the month starts. */
+  targets: Cents
   /** (income - living) / income: the share of income not spent on living, or null without income. */
   savingsRate: number | null
   /** Non-reserve categories with the biggest swing in the last month, through `throughDay`, versus the same window in the earlier months. */
@@ -170,6 +172,7 @@ export function buildReport(file: BudgetFile, months: MonthKey[], throughDay = 3
     avgLiving,
     avgSetAside: avg(summaries.map((s) => s.setAside)),
     avgNet: avg(summaries.map((s) => s.net)),
+    targets: sum(categories.filter((c) => !c.hidden).map((c) => c.target ?? 0)),
     savingsRate: avgIncome > 0 ? (avgIncome - avgLiving) / avgIncome : null,
     movers,
   }
