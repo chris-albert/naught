@@ -53,6 +53,11 @@ export function ReportsPage() {
       <div className="page-body">
         <div className="stat-row">
           <Stat label="Avg monthly income" value={report.avgIncome} />
+          <div className="stat" title="Sum of every category's monthly target, against average monthly income">
+            <span className="muted">Monthly targets</span>
+            <strong className={report.targets > report.avgIncome ? 'neg' : ''}>{formatCents(report.targets)}</strong>
+            {report.avgIncome > 0 && <span className="muted">{Math.round((100 * report.targets) / report.avgIncome)}% of income</span>}
+          </div>
           <Stat label="Avg living spending" value={report.avgLiving} />
           {includeReserves && <Stat label="Avg set aside" value={report.avgSetAside} signed />}
           <Stat label="Avg monthly net" value={avgNet} signed />
