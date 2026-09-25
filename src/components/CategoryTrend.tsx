@@ -6,13 +6,14 @@ import type { MonthKey } from '../model/types'
 
 const W = 900
 const H = 160
-const PAD = { top: 12, right: 12, bottom: 28, left: 56 }
+const PAD = { top: 20, right: 12, bottom: 28, left: 56 }
 
-/** One category's net money out per month, with its average across the range as a dashed line. Net money in dips below the baseline. */
+/** One category's net money out per month, with its average across the range and its monthly target (if set) as dashed lines. Net money in dips below the baseline. */
 export function CategoryTrend({ report, months }: { report: CategoryReport; months: MonthKey[] }) {
   const [hover, setHover] = useState<number | null>(null)
   const values = report.byMonth
-  const hi = Math.max(1, report.average, ...values)
+  const target = report.category.target
+  const hi = Math.max(1, report.average, target ?? 0, ...values)
   const lo = Math.min(0, ...values)
   const span = hi - lo
   const innerW = W - PAD.left - PAD.right
@@ -21,6 +22,8 @@ export function CategoryTrend({ report, months }: { report: CategoryReport; mont
   const barW = Math.min(28, band - 8)
   const y = (v: number) => PAD.top + innerH - ((v - lo) / span) * innerH
   const ticks = niceTicks(hi, 3)
+  // when the average and target lines sit close together, the lower one's label goes under its line
+  const crowded = target !== undefined && Math.abs(y(target) - y(report.average)) < 16
 
   return (
     <div className="chart category-trend">
@@ -48,12 +51,10 @@ export function CategoryTrend({ report, months }: { report: CategoryReport; mont
         })}
         <line x1={PAD.left} x2={W - PAD.right} y1={y(0)} y2={y(0)} className="chart-baseline" />
         {report.average > 0 && (
-          <>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(report.average)} y2={y(report.average)} className="chart-average" />
-            <text x={W - PAD.right} y={y(report.average) - 5} className="chart-label" textAnchor="end">
-              avg {formatCents(report.average)}
-            </text>
-          </>
+          <Reference value={report.average} y={y} className="chart-average" label={`avg ${formatCents(report.average)}`} below={crowded && target! > report.average} />
+        )}
+        {target !== undefined && (
+          <Reference value={target} y={y} className="chart-target" label={`target ${formatCents(target)}`} below={crowded && target < report.average} />
         )}
       </svg>
       <div className="chart-legend">
@@ -68,6 +69,11 @@ export function CategoryTrend({ report, months }: { report: CategoryReport; mont
         <span>
           <i className="swatch swatch-average" /> Average
         </span>
+        {target !== undefined && (
+          <span>
+            <i className="swatch swatch-target" /> Target
+          </span>
+        )}
         {hover !== null && (
           <span className="chart-tooltip">
             <strong>{formatMonth(months[hover])}</strong> ·{' '}
@@ -77,6 +83,18 @@ export function CategoryTrend({ report, months }: { report: CategoryReport; mont
         )}
       </div>
     </div>
+  )
+}
+
+/** Horizontal dashed line across the plot with its label at the right edge, just above it unless told to go below. */
+function Reference({ value, y, className, label, below }: { value: number; y: (v: number) => number; className: string; label: string; below: boolean }) {
+  return (
+    <>
+      <line x1={PAD.left} x2={W - PAD.right} y1={y(value)} y2={y(value)} className={className} />
+      <text x={W - PAD.right} y={below ? y(value) + 14 : y(value) - 5} className="chart-label" textAnchor="end">
+        {label}
+      </text>
+    </>
   )
 }
 
