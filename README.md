@@ -17,7 +17,10 @@ Early skeleton. Working today:
   category name opens a panel with its numbers for the month, a monthly
   target (how much it needs assigned each month), a one-click "Assign" that
   moves the shortfall from To Budget, and the reserve / hidden flags. A dot
-  next to the name marks categories still short of their target.
+  next to the name marks categories still short of their target. Groups and
+  categories are added from the table ("+ Add category" under each group,
+  "+ Add group" at the bottom), groups are renamed from their row, and a
+  category is renamed or moved to another group from its panel.
 - Account pages with transaction lists; payee and category are editable.
 - Reconciliation: each synced account shows the bank's balance against the
   sum of cleared transactions, lists uncleared and unconfirmed entries that

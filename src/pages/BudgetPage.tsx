@@ -2,16 +2,19 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CategoryPanel, targetShortfall } from '../components/CategoryPanel'
 import { MoveMoneyPopover, type MoveTarget } from '../components/MoveMoneyPopover'
+import { NameInput } from '../components/NameInput'
 import { computeMonth } from '../model/budgetMath'
 import { addMonths, currentMonth, formatMonth } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
-import type { Cents } from '../model/types'
+import { CREDIT_CARD_PAYMENTS_GROUP, type CategoryGroup, type Cents } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 
 export function BudgetPage() {
   const { month = currentMonth() } = useParams()
   const file = useBudget((s) => s.file)!
   const setAssigned = useBudget((s) => s.setAssigned)
+  const addCategory = useBudget((s) => s.addCategory)
+  const addCategoryGroup = useBudget((s) => s.addCategoryGroup)
   const [showHidden, setShowHidden] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null)
@@ -66,9 +69,15 @@ export function BudgetPage() {
         </thead>
         {groups.map((g) => (
           <tbody key={g.group.id}>
-            <tr className={`group-row ${collapsed.has(g.group.id) ? 'collapsed' : ''}`} onClick={() => toggleGroup(g.group.id)}>
+            <tr
+              className={`group-row ${collapsed.has(g.group.id) ? 'collapsed' : ''}`}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest('input, button')) return
+                toggleGroup(g.group.id)
+              }}
+            >
               <th>
-                <span className="chevron">▾</span> {g.group.name}
+                <span className="chevron">▾</span> <GroupName group={g.group} />
               </th>
               <th className={`num ${tint(g.assigned)}`}>{formatCents(g.assigned)}</th>
               <th className={`num ${tint(g.activity)}`}>{formatCents(g.activity)}</th>
@@ -110,8 +119,22 @@ export function BudgetPage() {
                   </td>
                 </tr>
               ))}
+            {!collapsed.has(g.group.id) && g.group.name !== CREDIT_CARD_PAYMENTS_GROUP && (
+              <tr className="add-row">
+                <td colSpan={4}>
+                  <InlineAdd label="Add category" placeholder="New category" onAdd={(name) => addCategory(g.group.id, name)} />
+                </td>
+              </tr>
+            )}
           </tbody>
         ))}
+        <tbody>
+          <tr className="add-row group">
+            <td colSpan={4}>
+              <InlineAdd label="Add group" placeholder="New group" onAdd={addCategoryGroup} />
+            </td>
+          </tr>
+        </tbody>
       </table>
       </div>
       {selected && (
@@ -151,6 +174,59 @@ function AssignedCell({ value, onChange }: { value: Cents; onChange: (cents: Cen
           e.currentTarget.blur()
         }
       }}
+    />
+  )
+}
+
+/** Group name with a hover "Rename" that swaps it for an input. The credit card group is managed by the app. */
+function GroupName({ group }: { group: CategoryGroup }) {
+  const updateCategoryGroup = useBudget((s) => s.updateCategoryGroup)
+  const [editing, setEditing] = useState(false)
+
+  if (group.name === CREDIT_CARD_PAYMENTS_GROUP) return <>{group.name}</>
+  if (!editing) {
+    return (
+      <>
+        {group.name}
+        <button type="button" className="link rename" onClick={() => setEditing(true)}>
+          Rename
+        </button>
+      </>
+    )
+  }
+  return (
+    <NameInput
+      className="inline"
+      initial={group.name}
+      onCommit={(name) => {
+        if (name !== group.name) updateCategoryGroup(group.id, { name })
+        setEditing(false)
+      }}
+      onCancel={() => setEditing(false)}
+    />
+  )
+}
+
+/** A "+ Add …" link that turns into a name input; Enter adds and keeps it open for the next one. */
+function InlineAdd({ label, placeholder, onAdd }: { label: string; placeholder: string; onAdd: (name: string) => void }) {
+  const [open, setOpen] = useState(false)
+  if (!open) {
+    return (
+      <button type="button" className="link add" onClick={() => setOpen(true)}>
+        + {label}
+      </button>
+    )
+  }
+  return (
+    <NameInput
+      placeholder={placeholder}
+      initial=""
+      stayOpen
+      onCommit={(name) => {
+        if (name) onAdd(name)
+        else setOpen(false)
+      }}
+      onCancel={() => setOpen(false)}
     />
   )
 }

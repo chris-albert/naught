@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { ensurePaymentCategories } from '../model/creditCards'
 import { deletePayeeRule, setPayeeRule } from '../model/payeeRules'
-import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type Cents, type MonthKey, type Transaction } from '../model/types'
+import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type CategoryGroup, type Cents, type MonthKey, type Transaction } from '../model/types'
 import { writeHandle } from '../storage/fileStore'
 
 export type SaveState = 'clean' | 'dirty' | 'saving' | 'error' | 'no-file'
@@ -21,6 +21,10 @@ interface BudgetState {
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void
   updateTransaction: (transactionId: string, patch: Partial<Transaction>) => void
   deleteTransaction: (transactionId: string) => void
+  addCategoryGroup: (name: string) => void
+  updateCategoryGroup: (groupId: string, patch: Partial<CategoryGroup>) => void
+  /** New category at the end of `groupId`. */
+  addCategory: (groupId: string, name: string) => void
   updateCategory: (categoryId: string, patch: Partial<Category>) => void
   /** Always give `payee` this category; also fills it in on existing uncategorized transactions. */
   setPayeeRule: (payee: string, categoryId: string) => void
@@ -81,6 +85,18 @@ export const useBudget = create<BudgetState>((set, get) => ({
 
   deleteTransaction: (transactionId) =>
     get().update((file) => ({ ...file, transactions: file.transactions.filter((t) => t.id !== transactionId) })),
+
+  addCategoryGroup: (name) =>
+    get().update((file) => ({ ...file, categoryGroups: [...file.categoryGroups, { id: crypto.randomUUID(), name, hidden: false }] })),
+
+  updateCategoryGroup: (groupId, patch) =>
+    get().update((file) => ({
+      ...file,
+      categoryGroups: file.categoryGroups.map((g) => (g.id === groupId ? { ...g, ...patch } : g)),
+    })),
+
+  addCategory: (groupId, name) =>
+    get().update((file) => ({ ...file, categories: [...file.categories, { id: crypto.randomUUID(), groupId, name, hidden: false }] })),
 
   updateCategory: (categoryId, patch) =>
     get().update((file) => ({
