@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { formatMonth } from '../model/dates'
 import { formatCents } from '../model/money'
 import type { MonthSummary } from '../model/reports'
+import { ChartTooltip, TipRow } from './ChartTooltip'
 
 const W = 900
 const H = 220
 const PAD = { top: 12, right: 12, bottom: 28, left: 56 }
+const GAP = 2 // surface gap between a bar and the segment stacked on it
 
 /** Paired columns per month: income and living spending, with money set aside stacked on top of living. One shared axis. */
 export function MonthlyBars({ summaries }: { summaries: MonthSummary[] }) {
@@ -19,37 +21,61 @@ export function MonthlyBars({ summaries }: { summaries: MonthSummary[] }) {
   const barW = Math.min(24, (band - 8) / 2)
   const y = (v: number) => PAD.top + innerH - (v / max) * innerH
   const ticks = niceTicks(max, 4)
+  const hovered = hover === null ? null : summaries[hover]
 
   return (
     <div className="chart">
-      <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img" aria-label="Income and living spending by month">
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="chart-grid" />
-            <text x={PAD.left - 8} y={y(t)} className="chart-axis" textAnchor="end" dominantBaseline="middle">
-              {compact(t)}
-            </text>
-          </g>
-        ))}
-        {summaries.map((s, i) => {
-          const cx = PAD.left + band * i + band / 2
-          const active = hover === i
-          return (
-            <g key={s.month} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
-              <rect x={PAD.left + band * i} y={PAD.top} width={band} height={innerH} fill="transparent" />
-              <Bar x={cx - barW - 1} w={barW} top={y(s.income)} bottom={y(0)} className="series-income" dim={hover !== null && !active} />
-              <Bar x={cx + 1} w={barW} top={y(s.living)} bottom={y(0)} className="series-spending" dim={hover !== null && !active} square={setAside(s) > 0} />
-              {setAside(s) > 0 && (
-                <Bar x={cx + 1} w={barW} top={y(s.living + setAside(s))} bottom={y(s.living)} className="series-set-aside" dim={hover !== null && !active} />
-              )}
-              <text x={cx} y={H - 8} className="chart-axis" textAnchor="middle">
-                {shortMonth(s.month)}
+      <div className="chart-plot">
+        <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img" aria-label="Income and living spending by month">
+          <defs>
+            <linearGradient id="grad-income" className="grad-income" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" />
+              <stop offset="1" />
+            </linearGradient>
+            <linearGradient id="grad-spending" className="grad-spending" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" />
+              <stop offset="1" />
+            </linearGradient>
+          </defs>
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="chart-grid" />
+              <text x={PAD.left - 8} y={y(t)} className="chart-axis" textAnchor="end" dominantBaseline="middle">
+                {compact(t)}
               </text>
             </g>
-          )
-        })}
-        <line x1={PAD.left} x2={W - PAD.right} y1={y(0)} y2={y(0)} className="chart-baseline" />
-      </svg>
+          ))}
+          {hover !== null && <rect x={PAD.left + band * hover} y={PAD.top} width={band} height={innerH} className="chart-hover-band" rx={6} />}
+          {summaries.map((s, i) => {
+            const cx = PAD.left + band * i + band / 2
+            const dim = hover !== null && hover !== i
+            const stacked = setAside(s) > 0
+            return (
+              <g key={s.month} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
+                <rect x={PAD.left + band * i} y={PAD.top} width={band} height={innerH} fill="transparent" />
+                <Bar x={cx - barW - 1} w={barW} top={y(s.income)} bottom={y(0)} fill="url(#grad-income)" dim={dim} />
+                <Bar x={cx + 1} w={barW} top={y(s.living)} bottom={y(0)} fill="url(#grad-spending)" dim={dim} square={stacked} />
+                {stacked && (
+                  <Bar x={cx + 1} w={barW} top={y(s.living + setAside(s))} bottom={y(s.living) - GAP} className="series-set-aside" dim={dim} />
+                )}
+                <text x={cx} y={H - 8} className={`chart-axis ${hover === i ? 'active' : ''}`} textAnchor="middle">
+                  {shortMonth(s.month)}
+                </text>
+              </g>
+            )
+          })}
+          <line x1={PAD.left} x2={W - PAD.right} y1={y(0)} y2={y(0)} className="chart-baseline" />
+        </svg>
+        {hover !== null && hovered && (
+          <ChartTooltip x={PAD.left + band * hover + band / 2} y={Math.min(y(hovered.income), y(hovered.living + setAside(hovered)))} w={W} h={H}>
+            <strong>{formatMonth(hovered.month)}</strong>
+            <TipRow swatch="series-income" label="Income" value={formatCents(hovered.income)} />
+            <TipRow swatch="series-spending" label="Living" value={formatCents(hovered.living)} />
+            {anySetAside && <TipRow swatch="series-set-aside" label="Set aside" value={formatCents(hovered.setAside)} />}
+            <TipRow label="Net" value={<span className={hovered.net < 0 ? 'neg' : 'pos'}>{formatCents(hovered.net)}</span>} />
+          </ChartTooltip>
+        )}
+      </div>
       <div className="chart-legend">
         <span>
           <i className="swatch series-income" /> Income
@@ -62,14 +88,6 @@ export function MonthlyBars({ summaries }: { summaries: MonthSummary[] }) {
             <i className="swatch series-set-aside" /> Set aside
           </span>
         )}
-        {hover !== null && (
-          <span className="chart-tooltip">
-            <strong>{formatMonth(summaries[hover].month)}</strong> · income {formatCents(summaries[hover].income)} · living{' '}
-            {formatCents(summaries[hover].living)}
-            {anySetAside && <> · set aside {formatCents(summaries[hover].setAside)}</>} · net{' '}
-            <span className={summaries[hover].net < 0 ? 'neg' : 'pos'}>{formatCents(summaries[hover].net)}</span>
-          </span>
-        )}
       </div>
     </div>
   )
@@ -80,7 +98,8 @@ function Bar({
   w,
   top,
   bottom,
-  className,
+  className = '',
+  fill,
   dim,
   square = false,
 }: {
@@ -88,7 +107,8 @@ function Bar({
   w: number
   top: number
   bottom: number
-  className: string
+  className?: string
+  fill?: string
   dim: boolean
   /** Flat top, for a segment with another stacked above it. */
   square?: boolean
@@ -98,7 +118,7 @@ function Bar({
   const r = square ? 0 : Math.min(4, h)
   // rounded at the data end, square at the baseline
   const d = `M${x},${bottom} V${top + r} a${r},${r} 0 0 1 ${r},-${r} h${w - 2 * r} a${r},${r} 0 0 1 ${r},${r} V${bottom} Z`
-  return <path d={d} className={`${className} ${dim ? 'dim' : ''}`} />
+  return <path d={d} fill={fill} className={`chart-bar ${className} ${dim ? 'dim' : ''}`} />
 }
 
 function niceTicks(max: number, count: number): number[] {

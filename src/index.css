@@ -414,16 +414,31 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .warn-text { color: var(--warn); }
 .chart { width: 100%; }
-.chart-svg { width: 100%; height: auto; display: block; }
-.chart-grid { stroke: var(--border); stroke-width: 1; }
-.chart-baseline { stroke: var(--muted); stroke-width: 1; }
-.chart-axis { fill: var(--muted); font-size: 11px; }
+.chart-plot { position: relative; }
+.chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 4; }
+.chart-baseline { stroke: var(--muted); stroke-width: 1; opacity: 0.7; }
+.chart-axis { fill: var(--muted); font-size: 11px; transition: fill 0.12s ease; }
+.chart-axis.active { fill: var(--text); font-weight: 600; }
+.chart-hover-band { fill: var(--text); opacity: 0.04; }
+.chart-crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.7; }
+.chart-bar { transition: opacity 0.12s ease, filter 0.12s ease; }
+.chart-bar.dim { opacity: 0.4; }
+/* bars are brightest at the data end and settle into the surface at the baseline */
+.grad-income stop:first-child { stop-color: color-mix(in srgb, var(--series-income) 88%, white); }
+.grad-income stop:last-child { stop-color: color-mix(in srgb, var(--series-income) 62%, var(--panel)); }
+.grad-spending stop:first-child { stop-color: color-mix(in srgb, var(--series-spending) 88%, white); }
+.grad-spending stop:last-child { stop-color: color-mix(in srgb, var(--series-spending) 62%, var(--panel)); }
 .series-income { fill: var(--series-income); }
 .series-spending { fill: var(--series-spending); }
 .series-set-aside { fill: color-mix(in srgb, var(--series-spending) 45%, transparent); }
-.series-net-line { fill: none; stroke: var(--series-income); stroke-width: 2; stroke-linejoin: round; }
-.series-net-area { fill: var(--series-income); opacity: 0.12; }
-.series-net-dot { fill: var(--panel); stroke: var(--series-income); stroke-width: 2; }
+.grad-net-area stop { stop-color: var(--series-income); }
+.grad-net-area stop:first-child { stop-opacity: 0.38; }
+.grad-net-area stop:nth-child(2) { stop-opacity: 0.02; }
+.grad-net-area stop:last-child { stop-opacity: 0.3; }
+.series-net-halo { fill: none; stroke: var(--series-income); stroke-width: 8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.12; }
+.series-net-line { fill: none; stroke: var(--series-income); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.series-net-dot { fill: var(--panel); stroke: var(--series-income); stroke-width: 2.5; filter: drop-shadow(0 1px 3px color-mix(in srgb, var(--series-income) 40%, transparent)); }
 .swatch.series-net { background: var(--series-income); }
 .chart-label { fill: var(--text); font-size: 12px; font-weight: 600; }
 .tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--accent-soft); color: var(--accent); font-weight: 700; vertical-align: 1px; }
@@ -431,14 +446,19 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .reserve-group { display: flex; flex-direction: column; gap: 3px; }
 .reserve-group label { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .card h3 button.link { font-size: 12px; font-weight: 500; color: var(--accent); padding: 0 6px; }
-.chart-svg path.dim { opacity: 0.45; }
-.chart-svg path { transition: opacity 0.12s ease; }
 .chart-legend { display: flex; gap: 18px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
 .swatch.series-income { background: var(--series-income); }
 .swatch.series-spending { background: var(--series-spending); }
 .swatch.series-set-aside { background: color-mix(in srgb, var(--series-spending) 45%, transparent); }
-.chart-tooltip { color: var(--text); margin-left: auto; }
+.chart-tip { position: absolute; left: clamp(90px, var(--tip-x), calc(100% - 90px)); transform: translate(-50%, calc(-100% - 10px)); pointer-events: none; z-index: 2; min-width: 150px; padding: 7px 10px 8px; border-radius: 10px; background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--border); box-shadow: var(--shadow-lg); font-size: 12px; color: var(--text); white-space: nowrap; animation: tip-in 0.12s ease; }
+.chart-tip strong { display: block; margin-bottom: 4px; }
+.chart-tip-row { display: flex; justify-content: space-between; gap: 16px; line-height: 1.5; }
+.chart-tip-row > span:first-child { color: var(--muted); }
+.chart-tip-row .num { font-variant-numeric: tabular-nums; font-weight: 600; }
+.chart-tip.below { transform: translate(-50%, 12px); animation-name: tip-in-below; }
+@keyframes tip-in { from { opacity: 0; transform: translate(-50%, calc(-100% - 4px)); } }
+@keyframes tip-in-below { from { opacity: 0; transform: translate(-50%, 6px); } }
 .movers { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 24px; }
 .movers li { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--border); }
 .mover-name { font-weight: 600; flex: 1; }
@@ -459,8 +479,8 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .report .category-detail:hover { background: none; }
 .trend-plot { position: relative; height: 120px; }
 .trend-bar { position: absolute; left: 50%; width: 24px; margin-left: -12px; transition: opacity 0.12s ease; }
-.trend-bar.out { background: var(--series-spending); border-radius: 4px 4px 0 0; }
-.trend-bar.in { background: var(--series-income); border-radius: 0 0 4px 4px; }
+.trend-bar.out { background: linear-gradient(180deg, color-mix(in srgb, var(--series-spending) 88%, white), color-mix(in srgb, var(--series-spending) 62%, var(--panel-2))); border-radius: 4px 4px 0 0; }
+.trend-bar.in { background: linear-gradient(0deg, color-mix(in srgb, var(--series-income) 88%, white), color-mix(in srgb, var(--series-income) 62%, var(--panel-2))); border-radius: 0 0 4px 4px; }
 .trend-bar.dim { opacity: 0.45; }
 .trend-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--muted); }
 .trend-line.average { border-top: 1.5px dashed var(--text); opacity: 0.6; }
