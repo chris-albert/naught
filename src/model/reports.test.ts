@@ -106,8 +106,27 @@ describe('buildReport', () => {
     const r = buildReport(f, ['2026-01', '2026-02'])
     expect(r.groups.map((g) => g.group.id)).toEqual(['g1', 'g2'])
     const food = r.groups[0].categories.find((c) => c.category.id === 'food')!
-    expect(food).toMatchObject({ byMonth: [10000, 30000], total: 40000, average: 20000, deltaVsAverage: 20000 })
+    expect(food).toMatchObject({ byMonth: [10000, 30000], total: 40000, average: 20000, soFar: 30000, soFarAverage: 10000, deltaVsAverage: 20000 })
     expect(r.groups[1].categories.find((c) => c.category.id === 'buffer')!.byMonth).toEqual([0, -50000])
     expect(r.movers.map((c) => c.category.id)).toEqual(['rent', 'food'])
+  })
+
+  it('compares the last month through a given day with the same window in earlier months', () => {
+    const f = fixture()
+    f.transactions.push(
+      txn({ date: '2026-01-01', amount: -150000, categoryId: 'rent' }),
+      txn({ date: '2026-01-05', amount: -10000, categoryId: 'food' }),
+      txn({ date: '2026-01-20', amount: -20000, categoryId: 'food' }),
+      txn({ date: '2026-02-01', amount: -150000, categoryId: 'rent' }),
+      txn({ date: '2026-02-05', amount: -25000, categoryId: 'food' }),
+      txn({ date: '2026-02-20', amount: -5000, categoryId: 'food' }), // after the cutoff, so not counted
+      txn({ date: '2026-03-01', amount: -150000, categoryId: 'rent' }),
+      txn({ date: '2026-03-06', amount: 3000, categoryId: 'food' }), // refund inside the window
+    )
+    const r = buildReport(f, ['2026-01', '2026-02', '2026-03'], 10)
+    const byId = Object.fromEntries(r.groups[0].categories.map((c) => [c.category.id, c]))
+    expect(byId.rent).toMatchObject({ soFar: 150000, soFarAverage: 150000, deltaVsAverage: 0 })
+    expect(byId.food).toMatchObject({ byMonth: [30000, 30000, -3000], soFar: -3000, soFarAverage: 17500, deltaVsAverage: -20500 })
+    expect(r.movers.map((c) => c.category.id)).toEqual(['food', 'rent'])
   })
 })
