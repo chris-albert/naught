@@ -3,10 +3,14 @@ import { Link } from 'react-router-dom'
 import type { CategoryRow } from '../model/budgetMath'
 import { monthOf } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
+import { buildReport, monthRange } from '../model/reports'
 import type { BudgetFile, Cents, MonthKey, Transaction } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { NameInput } from './NameInput'
+import { PanelTrend } from './PanelTrend'
 import { Picker } from './Picker'
+
+const TREND_MONTHS = 6
 
 /** Shortfall against the category's monthly target, if it has one. */
 export function targetShortfall(row: CategoryRow): Cents {
@@ -60,6 +64,12 @@ export function CategoryPanel({
       .sort((a, b) => sort.dir * compare(a, b, sort.key) || compare(b, a, 'date'))
   }, [file.transactions, file.accounts, category.id, month, sort])
   const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
+  // Same figures as the Reports page: net money out per month, ending at this month.
+  const trendMonths = useMemo(() => monthRange(month, TREND_MONTHS), [month])
+  const trend = useMemo(
+    () => buildReport(file, trendMonths).groups.flatMap((g) => g.categories).find((c) => c.category.id === category.id),
+    [file, trendMonths, category.id],
+  )
   const target = category.target
   const toGo = targetShortfall(row)
   const over = target === undefined ? 0 : Math.max(0, row.assigned - target)
@@ -170,6 +180,13 @@ export function CategoryPanel({
           </>
         )}
       </section>
+
+      {trend && trend.total !== 0 && (
+        <section>
+          <h4>Last {TREND_MONTHS} months</h4>
+          <PanelTrend report={trend} months={trendMonths} />
+        </section>
+      )}
 
       <section>
         <h4>Transactions this month{transactions.length > 0 && ` · ${transactions.length}`}</h4>

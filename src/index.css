@@ -382,6 +382,12 @@ input.target-amount { flex: 1; text-align: right; }
 .slideover .group-option { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; font-size: 13px; }
 .slideover .group-option .picker-button { border-color: var(--border); padding: 4px 10px; border-radius: 8px; }
 .slideover label.option small { display: block; font-size: 12px; line-height: 1.35; }
+.panel-trend-columns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; text-align: center; }
+.panel-trend-columns > div > span { display: block; margin-top: 4px; font-size: 11px; }
+.panel-trend-columns > div > span.active { color: var(--text); }
+.panel-trend .trend-plot { margin: 0 2px; }
+.panel-trend .trend-legend { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; }
+.panel-trend .trend-readout { min-height: 16px; margin-top: 6px; }
 
 /* ---------- move money popover (Available column) ---------- */
 .move-popover { position: fixed; z-index: 10; width: 320px; margin: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 14px 16px; }
