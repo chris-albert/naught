@@ -21,7 +21,9 @@ Early skeleton. Working today:
   group row shows "Rename" and a "+" that adds a category to it; "+ Add
   group" sits at the bottom of the table. A category is renamed or moved to
   another group from its panel.
-- Account pages with transaction lists; payee and category are editable.
+- Account pages with transaction lists; payee and category are editable. An
+  account can carry a link to its bank's site (set under Manage accounts),
+  shown in the page header for quick logins.
 - Reconciliation: each synced account shows the bank's balance against the
   sum of cleared transactions, lists uncleared and unconfirmed entries that
   explain any gap, and can lock cleared transactions (booking an adjustment

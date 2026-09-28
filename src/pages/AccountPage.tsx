@@ -40,6 +40,11 @@ export function AccountPage() {
             {uncategorized.length} uncategorized {onlyUncategorized ? '· show all' : ''}
           </Link>
         )}
+        {account?.bankUrl && (
+          <a href={account.bankUrl} target="_blank" rel="noopener noreferrer" className="bank-link">
+            Open bank ↗
+          </a>
+        )}
         {account && (
           <button className="secondary" onClick={() => setAdding(!adding)}>
             {adding ? 'Done adding' : 'Add transaction'}
