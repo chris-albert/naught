@@ -20,7 +20,7 @@ export interface Account {
   bankBalanceDate?: string
   /** The bank's "available" balance at the last sync, when it reports one. */
   bankAvailable?: Cents
-  /** Sum of transactions the bank listed as pending at the last sync. Never imported. */
+  /** Sum of transactions the bank listed as pending at the last sync. Imported as uncleared rows. */
   bankPending?: Cents
   /** For credit accounts: the category that holds cash set aside to pay the card. */
   paymentCategoryId?: string
@@ -63,6 +63,8 @@ export interface Transaction {
   transferAccountId: string | null
   /** Bank-provided id, e.g. "sfin:<id>", used to de-duplicate imports. */
   importId?: string
+  /** Payee as the bank sent it, kept so a renamed payee does not break matching a pending row to its posted one. */
+  importPayee?: string
 }
 
 /** Virtual category id for income ("Ready to Assign" in YNAB). */

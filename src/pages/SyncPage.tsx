@@ -155,7 +155,7 @@ export function SyncPage() {
           <h3>Fetch transactions</h3>
           <p className="muted">
             SimpleFIN allows roughly 24 requests a day, so fetch once, review the links below, then import. Pending
-            transactions are not imported until they post, but they are used to explain the bank balance when reconciling.
+            transactions are imported as uncleared so you can categorize them early; they clear when they post.
           </p>
           <label>
             Last{' '}

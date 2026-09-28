@@ -145,14 +145,34 @@ describe('mergeSimplefin', () => {
     expect(file.transactions.find((t) => t.importId === 'sfin:sf-1:p2')).toMatchObject({ cleared: 'cleared' })
   })
 
-  it('ignores pending transactions entirely', () => {
+  it('imports pending transactions as uncleared', () => {
     const { file, stats } = mergeSimplefin(
       fileWith(),
       [bank({ transactions: [{ id: 'p', posted: day('2026-09-10'), amount: '-9.00', description: 'hold', pending: true }] })],
       { now },
     )
-    expect(stats.added).toBe(0)
-    expect(file.transactions).toHaveLength(0)
+    expect(stats.added).toBe(1)
+    expect(file.transactions[0]).toMatchObject({ amount: -900, cleared: 'uncleared', importId: 'sfin:sf-1:p' })
+  })
+
+  it('lets a posted transaction adopt its pending row when the bank changes the id, keeping the category', () => {
+    const existing = fileWith([txn({ id: 'held', date: '2026-09-10', amount: -900, importId: 'sfin:sf-1:p', cleared: 'uncleared', categoryId: 'dining' })])
+    const { file, stats } = mergeSimplefin(
+      existing,
+      [
+        bank({
+          transactions: [
+            // Bank lists the pending one first; the posted one must still win.
+            { id: 'other', posted: day('2026-09-12'), amount: '-9.00', description: 'another', pending: true },
+            { id: 'q', posted: day('2026-09-11'), amount: '-9.00', description: 'posted' },
+          ],
+        }),
+      ],
+      { since: '2026-09-01', now },
+    )
+    expect(stats).toMatchObject({ added: 1, matched: 1, removed: 0 })
+    expect(file.transactions.find((t) => t.id === 'held')).toMatchObject({ cleared: 'cleared', importId: 'sfin:sf-1:q', categoryId: 'dining', date: '2026-09-11' })
+    expect(file.transactions.find((t) => t.importId === 'sfin:sf-1:other')).toMatchObject({ cleared: 'uncleared', categoryId: null })
   })
 
   it('removes previously imported pending rows the bank no longer sends within the window', () => {
@@ -163,13 +183,98 @@ describe('mergeSimplefin', () => {
     ])
     const { file, stats } = mergeSimplefin(
       existing,
-      [bank({ transactions: [{ id: 'new', posted: day('2026-09-08'), amount: '-27.50', description: 'posted with tip' }] })],
+      [bank({ transactions: [{ id: 'new', posted: day('2026-09-08'), amount: '-99.00', description: 'unrelated' }] })],
       { since: '2026-08-20', now },
     )
     expect(stats).toMatchObject({ added: 1, removed: 1, categorized: 0 })
     expect(file.transactions.map((t) => t.id).sort()).toEqual(expect.arrayContaining(['manual', 'tooOld']))
     expect(file.transactions.find((t) => t.id === 'stale')).toBeUndefined()
     expect(file.transactions).toHaveLength(3)
+  })
+
+  describe('pending rows that post for a different amount', () => {
+    const pendingRow = (p: Partial<Transaction> = {}) =>
+      txn({ id: 'held', date: '2026-09-06', amount: -2500, importId: 'sfin:sf-1:old', importPayee: 'CAFE ROMA', cleared: 'uncleared', categoryId: 'dining', ...p })
+
+    it('hands the category to the posted row when a tip was added and the description was reformatted', () => {
+      const { file, stats } = mergeSimplefin(
+        fileWith([pendingRow()]),
+        [bank({ transactions: [{ id: 'new', posted: day('2026-09-08'), amount: '-27.50', description: 'Cafe Roma #123 SF' }] })],
+        { since: '2026-08-20', now },
+      )
+      expect(stats).toMatchObject({ added: 0, matched: 1, removed: 0 })
+      expect(file.transactions).toHaveLength(1)
+      expect(file.transactions[0]).toMatchObject({
+        id: 'held',
+        categoryId: 'dining',
+        amount: -2750,
+        date: '2026-09-08',
+        cleared: 'cleared',
+        importId: 'sfin:sf-1:new',
+        importPayee: 'Cafe Roma #123 SF',
+      })
+    })
+
+    it('prefers the posted row whose description matches, then the closest amount', () => {
+      const { file } = mergeSimplefin(
+        fileWith([pendingRow(), pendingRow({ id: 'held2', importId: 'sfin:sf-1:old2', importPayee: 'TACO SPOT', categoryId: 'lunch', amount: -2400 })]),
+        [
+          bank({
+            transactions: [
+              { id: 'a', posted: day('2026-09-08'), amount: '-28.00', description: 'TACO SPOT' },
+              { id: 'b', posted: day('2026-09-08'), amount: '-27.00', description: 'CAFE ROMA' },
+            ],
+          }),
+        ],
+        { since: '2026-08-20', now },
+      )
+      expect(file.transactions.find((t) => t.id === 'held')).toMatchObject({ categoryId: 'dining', importId: 'sfin:sf-1:b', amount: -2700 })
+      expect(file.transactions.find((t) => t.id === 'held2')).toMatchObject({ categoryId: 'lunch', importId: 'sfin:sf-1:a', amount: -2800 })
+      expect(file.transactions).toHaveLength(2)
+    })
+
+    it('does not pair when the amount drifts too far, and never pairs with a categorized row', () => {
+      const { file, stats } = mergeSimplefin(
+        fileWith([pendingRow(), txn({ id: 'done', date: '2026-09-07', amount: -2600, importId: 'sfin:sf-1:done', categoryId: 'groceries' })]),
+        [
+          bank({
+            transactions: [
+              { id: 'done', posted: day('2026-09-07'), amount: '-26.00', description: 'CAFE ROMA' },
+              { id: 'far', posted: day('2026-09-08'), amount: '-60.00', description: 'CAFE ROMA' },
+            ],
+          }),
+        ],
+        { since: '2026-08-20', now },
+      )
+      expect(stats).toMatchObject({ added: 1, removed: 1 })
+      expect(file.transactions.find((t) => t.id === 'held')).toBeUndefined()
+      expect(file.transactions.find((t) => t.id === 'done')).toMatchObject({ categoryId: 'groceries' })
+      expect(file.transactions.find((t) => t.importId === 'sfin:sf-1:far')).toMatchObject({ categoryId: null })
+    })
+
+    it('pairs on a later sync when the bank listed pending and posted together first', () => {
+      const first = mergeSimplefin(
+        fileWith([pendingRow()]),
+        [
+          bank({
+            transactions: [
+              { id: 'old', posted: day('2026-09-06'), amount: '-25.00', description: 'CAFE ROMA', pending: true },
+              { id: 'new', posted: day('2026-09-08'), amount: '-27.50', description: 'CAFE ROMA' },
+            ],
+          }),
+        ],
+        { since: '2026-08-20', now },
+      )
+      expect(first.file.transactions).toHaveLength(2)
+      const second = mergeSimplefin(
+        first.file,
+        [bank({ transactions: [{ id: 'new', posted: day('2026-09-08'), amount: '-27.50', description: 'CAFE ROMA' }] })],
+        { since: '2026-08-20', now },
+      )
+      expect(second.stats).toMatchObject({ added: 0, matched: 1, unchanged: 1, removed: 0 })
+      expect(second.file.transactions).toHaveLength(1)
+      expect(second.file.transactions[0]).toMatchObject({ id: 'held', categoryId: 'dining', amount: -2750, cleared: 'cleared', importId: 'sfin:sf-1:new' })
+    })
   })
 
   it('adds a starting balance for newly created accounts so the balance matches the bank', () => {
@@ -207,7 +312,6 @@ describe('mergeSimplefin', () => {
       { now },
     )
     expect(file.accounts[0]).toMatchObject({ bankBalance: 123456, bankBalanceDate: '2026-09-15T00:00:00.000Z', bankPending: -2000 })
-    expect(file.transactions).toHaveLength(0)
   })
 })
 
