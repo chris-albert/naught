@@ -34,7 +34,10 @@ Early skeleton. Working today:
   as reserves (vacation fund, buffer, investments): assigning to a reserve is
   "set aside" in that month and spending from it later is a draw that does
   not count against the later month. Money arriving directly in a category
-  counts as income; transfers between your own accounts are ignored.
+  counts as income; transfers between your own accounts are ignored. Any
+  group, category or payee opens a drill-down page (from the arrow on its
+  report row, or "Spending over time" in the category panel) with its monthly
+  bars, a breakdown by category or payee, and the transactions behind them.
 - SimpleFIN bank sync: paste a setup token, fetch, link bank accounts to
   budget accounts (or create them), import. Pending transactions are skipped
   (banks change their id and amount when they post). Posted ones are

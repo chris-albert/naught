@@ -11,6 +11,7 @@ import { LandingPage } from './pages/LandingPage'
 import { PayeeRulesPage } from './pages/PayeeRulesPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SyncPage } from './pages/SyncPage'
+import { TrendPage } from './pages/TrendPage'
 import { WelcomePage } from './pages/WelcomePage'
 import { hasPermission, readHandle, rememberedHandle } from './storage/fileStore'
 import { useBudget } from './store/budgetStore'
@@ -80,6 +81,7 @@ function BudgetApp() {
           <Route path="budget" element={<BudgetPage />} />
           <Route path="budget/:month" element={<BudgetPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="reports/trend" element={<TrendPage />} />
           <Route path="accounts" element={<AccountPage />} />
           <Route path="accounts/:id" element={<AccountPage />} />
           <Route path="import" element={<ImportPage />} />

@@ -121,7 +121,7 @@ function Bar({
   return <path d={d} fill={fill} className={`chart-bar ${className} ${dim ? 'dim' : ''}`} />
 }
 
-function niceTicks(max: number, count: number): number[] {
+export function niceTicks(max: number, count: number): number[] {
   const raw = max / count
   const mag = 10 ** Math.floor(Math.log10(raw))
   const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? mag * 10
@@ -130,7 +130,7 @@ function niceTicks(max: number, count: number): number[] {
   return ticks
 }
 
-function compact(cents: number): string {
+export function compact(cents: number): string {
   const d = cents / 100
   return d >= 1000 ? `$${(d / 1000).toFixed(d % 1000 === 0 ? 0 : 1)}k` : `$${d}`
 }
