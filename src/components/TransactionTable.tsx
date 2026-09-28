@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatCents } from '../model/money'
 import { categoryForPayee, uncategorizedFrom } from '../model/payeeRules'
 import { INCOME_CATEGORY_ID, type BudgetFile, type Transaction } from '../model/types'
@@ -6,6 +6,7 @@ import { useBudget } from '../store/budgetStore'
 import { CategoryPicker } from './CategoryPicker'
 import { confirm } from './ConfirmDialog'
 import { PayeePicker } from './PayeePicker'
+import type { PickerHandle } from './Picker'
 
 const LIMIT = 500
 
@@ -72,6 +73,85 @@ export function TransactionTable({
   ].filter((s) => s.rows.length > 0)
   // A list that is only cleared rows needs no heading.
   const headings = sections.length > 1 || sections[0]?.title !== 'Cleared'
+  const visible = sections.flatMap((s) => s.rows)
+
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const categoryRef = useRef<PickerHandle>(null)
+  const payeeRef = useRef<PickerHandle>(null)
+  const tableRef = useRef<HTMLTableElement>(null)
+
+  const select = (t: Transaction | undefined) => {
+    if (!t) return
+    setSelectedId(t.id)
+    tableRef.current?.querySelector(`tr[data-id="${t.id}"]`)?.scrollIntoView({ block: 'nearest' })
+  }
+
+  /** After categorizing, step to the row above so the next keypress works on it. */
+  const setCategory = (t: Transaction, categoryId: string | null) => {
+    categorize(t, categoryId)
+    const i = visible.findIndex((v) => v.id === t.id)
+    if (i > 0) select(visible[i - 1])
+  }
+
+  const askDelete = async (t: Transaction) => {
+    const ok = await confirm({
+      title: 'Delete this transaction?',
+      message: `${t.date} · ${t.payee || 'No payee'} · ${formatCents(t.amount)}`,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (ok) deleteTransaction(t.id)
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement
+      if (target.closest('input, textarea, select, [contenteditable]')) return
+      if (target.closest('dialog')) return
+
+      const index = visible.findIndex((t) => t.id === selectedId)
+      const move = (delta: number) =>
+        select(visible[Math.min(visible.length - 1, Math.max(0, (index < 0 ? (delta > 0 ? -1 : visible.length) : index) + delta))])
+
+      switch (e.key) {
+        case 'j':
+        case 'ArrowDown':
+          e.preventDefault()
+          move(1)
+          break
+        case 'k':
+        case 'ArrowUp':
+          e.preventDefault()
+          move(-1)
+          break
+        case 'Escape':
+          setSelectedId(null)
+          break
+        case 'c':
+          if (index >= 0) {
+            e.preventDefault()
+            categoryRef.current?.open()
+          }
+          break
+        case 'p':
+          if (index >= 0) {
+            e.preventDefault()
+            payeeRef.current?.open()
+          }
+          break
+        case 'Backspace':
+        case 'Delete':
+          if (index >= 0) {
+            e.preventDefault()
+            void askDelete(visible[index])
+          }
+          break
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  })
 
   const renderSuggestion = (t: Transaction) => {
     const s = suggestions.get(t.id)
@@ -92,46 +172,47 @@ export function TransactionTable({
     )
   }
 
-  const renderRow = (t: Transaction) => [
-    <tr key={t.id} className={!t.categoryId && !t.transferAccountId ? 'uncategorized' : ''}>
-      {showAccount && <td>{accountName.get(t.accountId)}</td>}
-      <td>{t.date}</td>
-      <td>
-        <PayeePicker payees={payees} value={t.payee} onChange={(payee) => updateTransaction(t.id, { payee })} />
-      </td>
-      <td>
-        {t.transferAccountId ? (
-          <span className="muted">Transfer: {accountName.get(t.transferAccountId) ?? '?'}</span>
-        ) : (
-          <CategoryPicker file={file} value={t.categoryId} onChange={(categoryId) => categorize(t, categoryId)} />
-        )}
-      </td>
-      <td className={`num ${t.amount < 0 ? 'neg' : 'pos'}`}>{formatCents(t.amount)}</td>
-      <td className="muted">{t.cleared === 'reconciled' ? '🔒' : t.cleared === 'cleared' ? '✓' : ''}</td>
-      <td className="row-actions">
-        <button
-          className="link danger"
-          title="Delete transaction"
-          onClick={async () => {
-            const ok = await confirm({
-              title: 'Delete this transaction?',
-              message: `${t.date} · ${t.payee || 'No payee'} · ${formatCents(t.amount)}`,
-              confirmLabel: 'Delete',
-              danger: true,
-            })
-            if (ok) deleteTransaction(t.id)
-          }}
-        >
-          ✕
-        </button>
-      </td>
-    </tr>,
-    renderSuggestion(t),
-  ]
+  const renderRow = (t: Transaction) => {
+    const selected = t.id === selectedId
+    return [
+      <tr
+        key={t.id}
+        data-id={t.id}
+        className={`${!t.categoryId && !t.transferAccountId ? 'uncategorized' : ''} ${selected ? 'selected' : ''}`}
+        onClick={() => setSelectedId(t.id)}
+      >
+        {showAccount && <td>{accountName.get(t.accountId)}</td>}
+        <td>{t.date}</td>
+        <td>
+          <PayeePicker ref={selected ? payeeRef : undefined} payees={payees} value={t.payee} onChange={(payee) => updateTransaction(t.id, { payee })} />
+        </td>
+        <td>
+          {t.transferAccountId ? (
+            <span className="muted">Transfer: {accountName.get(t.transferAccountId) ?? '?'}</span>
+          ) : (
+            <CategoryPicker
+              ref={selected ? categoryRef : undefined}
+              file={file}
+              value={t.categoryId}
+              onChange={(categoryId) => setCategory(t, categoryId)}
+            />
+          )}
+        </td>
+        <td className={`num ${t.amount < 0 ? 'neg' : 'pos'}`}>{formatCents(t.amount)}</td>
+        <td className="muted">{t.cleared === 'reconciled' ? '🔒' : t.cleared === 'cleared' ? '✓' : ''}</td>
+        <td className="row-actions">
+          <button className="link danger" title="Delete transaction" onClick={() => askDelete(t)}>
+            ✕
+          </button>
+        </td>
+      </tr>,
+      renderSuggestion(t),
+    ]
+  }
 
   return (
     <>
-      <table className="grid">
+      <table className="grid" ref={tableRef}>
         <thead>
           <tr>
             {showAccount && <th>Account</th>}
@@ -162,6 +243,9 @@ export function TransactionTable({
           Showing {LIMIT} of {rest.length} cleared transactions.
         </p>
       )}
+      <p className="muted hotkeys">
+        <kbd>j</kbd>/<kbd>k</kbd> or arrows move · <kbd>c</kbd> category · <kbd>p</kbd> payee · <kbd>⌫</kbd> delete · <kbd>esc</kbd> deselect
+      </p>
     </>
   )
 }

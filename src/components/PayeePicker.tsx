@@ -1,14 +1,8 @@
-import type { PickerOption } from './Picker'
-import { Picker } from './Picker'
+import { forwardRef } from 'react'
+import { Picker, type PickerHandle, type PickerOption } from './Picker'
 
-export function PayeePicker({
-  payees,
-  value,
-  onChange,
-}: {
-  payees: PickerOption[]
-  value: string
-  onChange: (payee: string) => void
-}) {
-  return <Picker options={payees} value={value} placeholder="Payee" allowCustom onChange={onChange} />
-}
+export const PayeePicker = forwardRef<PickerHandle, { payees: PickerOption[]; value: string; onChange: (payee: string) => void }>(
+  function PayeePicker({ payees, value, onChange }, ref) {
+    return <Picker ref={ref} options={payees} value={value} placeholder="Payee" allowCustom onChange={onChange} />
+  },
+)

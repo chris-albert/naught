@@ -511,3 +511,10 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .recon-dot.ok { background: var(--accent-2); }
 .recon-dot.off { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
 .reconcile-note { margin: 10px 0 0; font-size: 12px; }
+
+/* ---------- row selection & hotkeys ---------- */
+.grid tr.selected td { background: color-mix(in srgb, var(--accent-soft) 70%, var(--panel)); }
+.grid tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--accent-2); }
+.grid tr.uncategorized.selected td:first-child { box-shadow: inset 3px 0 0 var(--accent-2); }
+.hotkeys { font-size: 12px; margin-top: 10px; }
+kbd { font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--panel-2); }
