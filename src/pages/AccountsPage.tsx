@@ -74,6 +74,19 @@ function AccountList() {
       <td>
         <Picker options={accountTypes} value={a.type} onChange={(type) => updateAccount(a.id, { type: type as AccountType })} />
       </td>
+      <td>
+        <input
+          className="inline"
+          placeholder="https://…"
+          defaultValue={a.bankUrl ?? ''}
+          onBlur={(e) => {
+            const bankUrl = e.target.value.trim()
+            if (bankUrl !== (a.bankUrl ?? '')) updateAccount(a.id, { bankUrl: bankUrl || undefined })
+            else e.target.value = a.bankUrl ?? ''
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        />
+      </td>
       <td className="num">{formatCents(balance(a.id))}</td>
       <td className="actions">
         <button className="link" title="Move up" onClick={() => moveAccount(a.id, -1)}>
@@ -98,20 +111,21 @@ function AccountList() {
         <tr>
           <th>Name</th>
           <th>Type</th>
+          <th>Bank link</th>
           <th className="num">Balance</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <tr className="section-row">
-          <th colSpan={4}>Open · {open.length}</th>
+          <th colSpan={5}>Open · {open.length}</th>
         </tr>
         {open.map(renderRow)}
       </tbody>
       {closed.length > 0 && (
         <tbody>
           <tr className="section-row">
-            <th colSpan={4}>Closed · {closed.length}</th>
+            <th colSpan={5}>Closed · {closed.length}</th>
           </tr>
           {closed.map(renderRow)}
         </tbody>

@@ -24,6 +24,8 @@ export interface Account {
   bankPending?: Cents
   /** For credit accounts: the category that holds cash set aside to pay the card. */
   paymentCategoryId?: string
+  /** The bank's website, shown as a link on the account page. */
+  bankUrl?: string
 }
 
 export interface CategoryGroup {
