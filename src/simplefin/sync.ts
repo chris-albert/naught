@@ -11,6 +11,12 @@ export const importIdFor = (accountId: string, transactionId: string) => `sfin:$
  * a week or more to post, so the window is generous; the closest date wins.
  */
 const MATCH_WINDOW_DAYS = 10
+/**
+ * A pending charge may post for a different amount (a tip added, a hold
+ * settled). Within this fraction of the pending amount it can still be the same
+ * charge.
+ */
+const REPOST_TOLERANCE = 0.3
 
 export interface SyncStats {
   added: number
@@ -48,6 +54,16 @@ function daysBetween(a: string, b: string): number {
   return Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000
 }
 
+/** Banks reformat descriptions between pending and posted; compare letters only, and accept one being a prefix of the other. */
+function samePayee(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false
+  const norm = (s: string) => s.toUpperCase().replace(/[^A-Z]/g, '')
+  const x = norm(a)
+  const y = norm(b)
+  if (x.length < 4 || y.length < 4) return false
+  return x.startsWith(y) || y.startsWith(x)
+}
+
 /** Create a Naught account for a SimpleFIN account. */
 export function createLinkedAccount(sfin: SimplefinAccount, type: AccountType, onBudget: boolean): Account {
   return { id: crypto.randomUUID(), name: sfin.name, type, onBudget, closed: false, simplefinId: sfin.id }
@@ -56,13 +72,18 @@ export function createLinkedAccount(sfin: SimplefinAccount, type: AccountType, o
 /**
  * Merge bank transactions into the file. Pure: returns a new file plus counts.
  *
- * Pending transactions are ignored: banks often change their id and amount when
- * they post, which produced duplicates. Only posted transactions are imported.
+ * Pending transactions are imported as uncleared so they can be categorized
+ * early. Banks often change their id (and sometimes the amount) when they post,
+ * so posted transactions are handled first and may adopt a pending row the bank
+ * no longer sends. A pending row that is still unexplained afterwards is paired
+ * with an uncategorized posted row of about the same amount (see `since`), so
+ * the category survives a tip or a settled hold; if nothing pairs, it is removed.
  *
- * For each bank transaction, in order:
+ * For each bank transaction, posted before pending:
  * 1. Same importId already present -> update date/amount/cleared if the bank changed them (pending -> posted).
- * 2. Otherwise the existing transaction in the same account with the same amount, no importId,
- *    and the closest date within MATCH_WINDOW_DAYS -> adopt it (set importId, mark cleared).
+ * 2. Otherwise the existing transaction in the same account with the same amount and the closest date
+ *    within MATCH_WINDOW_DAYS, either entered by hand (no importId) or an imported pending row the bank
+ *    stopped sending -> adopt it (set importId, mark cleared if posted).
  * 3. Otherwise insert it as a new transaction, categorized by payee rule if one matches.
  *
  * Accounts listed in `newAccountIds` get a "Starting Balance" transaction so their
@@ -78,6 +99,7 @@ export function mergeSimplefin(
   const byImportId = new Map<string, Transaction>()
   for (const t of transactions) if (t.importId) byImportId.set(t.importId, t)
   const seen = new Set<string>()
+  const addedIds = new Set<string>()
   const syncedAccountIds = new Set<string>()
 
   for (const sfin of accounts) {
@@ -85,13 +107,13 @@ export function mergeSimplefin(
     if (!account) continue
     syncedAccountIds.add(account.id)
 
-    for (const bt of sfin.transactions) {
-      if (bt.pending) continue
+    const ordered = [...sfin.transactions].sort((a, b) => Number(!!a.pending) - Number(!!b.pending))
+    for (const bt of ordered) {
       const importId = importIdFor(sfin.id, bt.id)
       seen.add(importId)
       const date = epochToIsoDate(bt.posted || bt.transacted_at || 0)
       const amount = parseDecimal(bt.amount)
-      const cleared = 'cleared'
+      const cleared = bt.pending ? 'uncleared' : 'cleared'
 
       const existing = byImportId.get(importId)
       if (existing) {
@@ -108,22 +130,29 @@ export function mergeSimplefin(
       let candidate: Transaction | undefined
       let best = MATCH_WINDOW_DAYS + 1
       for (const t of transactions) {
-        if (t.accountId !== account.id || t.importId || t.amount !== amount) continue
+        if (t.accountId !== account.id || t.amount !== amount) continue
+        if (t.importId && !(t.cleared === 'uncleared' && !seen.has(t.importId))) continue
         const gap = daysBetween(t.date, date)
         if (gap <= MATCH_WINDOW_DAYS && gap < best) {
           best = gap
           candidate = t
         }
       }
+      const payee = (bt.payee ?? bt.description ?? '').trim()
       if (candidate) {
+        if (candidate.importId) {
+          // A pending row re-sent under a new id: take the bank's date, as step 1 would.
+          byImportId.delete(candidate.importId)
+          candidate.date = date
+        }
         candidate.importId = importId
+        candidate.importPayee = payee
         if (candidate.cleared === 'uncleared') candidate.cleared = cleared
         byImportId.set(importId, candidate)
         stats.matched++
         continue
       }
 
-      const payee = (bt.payee ?? bt.description ?? '').trim()
       const categoryId = categoryForPayee(file, payee)
       const added: Transaction = {
         id: crypto.randomUUID(),
@@ -136,9 +165,11 @@ export function mergeSimplefin(
         cleared,
         transferAccountId: null,
         importId,
+        importPayee: payee,
       }
       transactions.push(added)
       byImportId.set(importId, added)
+      addedIds.add(added.id)
       stats.added++
       if (categoryId) stats.categorized++
     }
@@ -165,15 +196,44 @@ export function mergeSimplefin(
     }
   }
 
-  // Pending rows imported by earlier versions: if the bank no longer sends them
-  // (within the window we asked for) they either posted under a new id, which
-  // has now been imported separately, or were dropped. Either way, remove them.
+  // Imported pending rows the bank no longer sends (within the window we asked
+  // for) either posted under a new id or were dropped by the bank. A posted
+  // version with the same amount was adopted above; one with a changed amount
+  // is a fresh, uncategorized row, so pair each vanished pending row with the
+  // best such row and let it carry the category over. Whatever is left is removed.
   if (since) {
-    const before = transactions.length
-    transactions = transactions.filter(
-      (t) => !(t.cleared === 'uncleared' && t.importId && syncedAccountIds.has(t.accountId) && t.date >= since && !seen.has(t.importId)),
-    )
-    stats.removed = before - transactions.length
+    const inWindow = (t: Transaction) => !!t.importId && syncedAccountIds.has(t.accountId) && t.date >= since
+    const vanished = transactions.filter((t) => t.cleared === 'uncleared' && inWindow(t) && !seen.has(t.importId!))
+    const posted = transactions.filter((t) => t.cleared === 'cleared' && inWindow(t) && seen.has(t.importId!) && !t.categoryId && !t.transferAccountId)
+    const pairs: { pending: Transaction; posted: Transaction; payee: boolean; drift: number; gap: number }[] = []
+    for (const pending of vanished) {
+      for (const p of posted) {
+        if (p.accountId !== pending.accountId || Math.sign(p.amount) !== Math.sign(pending.amount)) continue
+        const drift = Math.abs(p.amount - pending.amount) / Math.abs(pending.amount)
+        const gap = daysBetween(p.date, pending.date)
+        if (drift > REPOST_TOLERANCE || gap > MATCH_WINDOW_DAYS) continue
+        pairs.push({ pending, posted: p, payee: samePayee(pending.importPayee, p.importPayee), drift, gap })
+      }
+    }
+    pairs.sort((a, b) => Number(b.payee) - Number(a.payee) || a.drift - b.drift || a.gap - b.gap)
+    const taken = new Set<string>()
+    const dropped = new Set<string>()
+    for (const { pending, posted: p } of pairs) {
+      if (taken.has(pending.id) || taken.has(p.id)) continue
+      taken.add(pending.id)
+      taken.add(p.id)
+      pending.importId = p.importId
+      pending.importPayee = p.importPayee
+      pending.amount = p.amount
+      pending.date = p.date
+      pending.cleared = p.cleared
+      dropped.add(p.id)
+      stats.matched++
+      if (addedIds.has(p.id)) stats.added--
+    }
+    for (const t of vanished) if (!taken.has(t.id)) dropped.add(t.id)
+    transactions = transactions.filter((t) => !dropped.has(t.id))
+    stats.removed = vanished.filter((t) => !taken.has(t.id)).length
   }
 
   // Remember what the bank says each linked account holds, for reconciliation.

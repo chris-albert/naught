@@ -11,7 +11,7 @@ export interface Reconciliation {
   bankBalanceDate: string
   /** Sum of cleared and reconciled transactions: what the bank should be showing. */
   clearedBalance: Cents
-  /** Transactions the bank listed as pending, not yet imported. */
+  /** Transactions the bank listed as pending; imported as uncleared, so not in clearedBalance. */
   pending: Cents
   /** Which bank figure tied out: the reported balance, that balance less listed pending, or the bank's available balance. Null when nothing ties. */
   matchedBy: 'balance' | 'balance-less-pending' | 'available' | 'available-less-pending' | null
