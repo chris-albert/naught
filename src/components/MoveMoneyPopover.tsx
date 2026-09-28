@@ -94,7 +94,7 @@ export function MoveMoneyPopover({
     <form
       ref={ref}
       className="move-popover"
-      style={{ top, right: window.innerWidth - target.anchor.right }}
+      style={{ top, right: Math.min(window.innerWidth - target.anchor.right, Math.max(8, window.innerWidth - 328)) }}
       onSubmit={(e) => {
         e.preventDefault()
         submit()

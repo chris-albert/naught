@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { Sidebar } from './components/Sidebar'
 import { sampleBudget } from './demo/sampleBudget'
@@ -43,6 +43,11 @@ function BudgetApp() {
   const load = useBudget((s) => s.load)
   const [pendingHandle, setPendingHandle] = useState<FileSystemFileHandle | null>(null)
   const [restoring, setRestoring] = useState(true)
+  const [navOpen, setNavOpen] = useState(false)
+
+  // On narrow screens the sidebar is a drawer; close it after navigating.
+  const location = useLocation()
+  useEffect(() => setNavOpen(false), [location])
 
   // On startup, reopen the last file if the browser still lets us.
   useEffect(() => {
@@ -74,8 +79,16 @@ function BudgetApp() {
   return (
     <div className="layout">
       <ConfirmDialog />
-      <Sidebar />
+      <Sidebar isOpen={navOpen} />
+      {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} />}
       <main className="content">
+        <div className="topbar">
+          <button className="icon-button menu" aria-label="Open menu" onClick={() => setNavOpen(true)}>
+            ☰
+          </button>
+          <img src="/icon.svg" alt="" className="brand-icon" />
+          <span className="brand">{file.name || 'Naught'}</span>
+        </div>
         <Routes>
           <Route path="/" element={<Navigate to="/app/budget" replace />} />
           <Route path="budget" element={<BudgetPage />} />
