@@ -55,7 +55,8 @@ export const Picker = forwardRef<
 
   const openPicker = () => {
     const r = buttonRef.current!.getBoundingClientRect()
-    setPos({ top: r.bottom + 2, left: r.left, width: Math.max(r.width, 260) })
+    const width = Math.min(Math.max(r.width, 260), window.innerWidth - 16)
+    setPos({ top: r.bottom + 2, left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), width })
     setQuery('')
     setActive(Math.max(0, options.findIndex((o) => o.key === value)))
     setOpen(true)

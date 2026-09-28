@@ -17,7 +17,7 @@ const saveLabels: Record<SaveState, string> = {
   'no-file': 'Not linked to a file',
 }
 
-export function Sidebar() {
+export function Sidebar({ isOpen }: { isOpen: boolean }) {
   const file = useBudget((s) => s.file)!
   const saveState = useBudget((s) => s.saveState)
   const demo = useBudget((s) => s.demo)
@@ -57,7 +57,7 @@ export function Sidebar() {
   }
 
   return (
-    <nav className="sidebar">
+    <nav className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="brand-row">
         <img src="/icon.svg" alt="" className="brand-icon" />
         <h1 className="brand">{file.name || 'Naught'}</h1>
