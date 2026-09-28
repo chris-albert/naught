@@ -499,6 +499,22 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .swatch.swatch-average { background: none; border-top: 2px dashed var(--text); height: 0; border-radius: 0; opacity: 0.6; vertical-align: 2px; }
 .swatch.swatch-target { background: none; border-top: 2px dashed var(--accent); height: 0; border-radius: 0; vertical-align: 2px; }
 
+/* ---------- trend drill-down ---------- */
+.breadcrumb { font-size: 12px; margin-bottom: 2px; }
+.breadcrumb a:hover { color: var(--accent); }
+.report .drill { margin-left: 8px; font-size: 12px; color: var(--muted); opacity: 0; transition: opacity 0.12s ease; }
+.report tr:hover .drill { opacity: 1; }
+.report .drill:hover { color: var(--accent); }
+.movers a.mover-name:hover { color: var(--accent); }
+.slideover-head .muted a:hover { color: var(--accent); }
+.chart-average { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.6; }
+.chart-target { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.report td .count { font-size: 11px; }
+.trend-transactions td a:hover { color: var(--accent); }
+.trend-transactions td.memo { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.card > .grid { box-shadow: none; }
+.card p .link { display: inline; padding: 0; color: var(--accent); }
+
 /* ---------- reconcile ---------- */
 .reconcile { border-left: 4px solid var(--accent); }
 .reconcile.off { border-left-color: var(--warn); }

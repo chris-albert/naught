@@ -1,10 +1,12 @@
 import { Fragment, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { CategoryTrend } from '../components/CategoryTrend'
 import { CumulativeLine } from '../components/CumulativeLine'
 import { MonthlyBars } from '../components/MonthlyBars'
 import { currentMonth, formatMonth } from '../model/dates'
 import { formatCents } from '../model/money'
 import { buildReport, monthRange, type CategoryReport, type GroupReport, type MonthSummary } from '../model/reports'
+import { trendPath, type TrendScope } from '../model/trend'
 import type { Cents } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 
@@ -157,6 +159,7 @@ export function ReportsPage() {
                 <tr className={`group-row ${collapsed.has(g.group.id) ? 'collapsed' : ''}`} onClick={() => toggle(g.group.id)}>
                   <th>
                     <span className="chevron">▾</span> {g.group.name}
+                    <Drill scope={{ kind: 'group', id: g.group.id }} />
                   </th>
                   {g.byMonth.map((v, i) => (
                     <th key={months[i]} className="num">
@@ -178,6 +181,7 @@ export function ReportsPage() {
                           <td>
                             <span className="chevron">▾</span> {c.category.name}
                             {c.category.reserve && <span className="tag">reserve</span>}
+                            <Drill scope={{ kind: 'category', id: c.category.id }} />
                           </td>
                           {c.byMonth.map((v, i) => (
                             <td key={months[i]} className="num heat" style={{ '--heat': v > 0 ? Math.min(1, v / max) : 0 } as React.CSSProperties}>
@@ -265,7 +269,9 @@ function Mover({ c }: { c: CategoryReport }) {
   const up = c.deltaVsAverage > 0
   return (
     <li>
-      <span className="mover-name">{c.category.name}</span>
+      <Link className="mover-name" to={trendPath({ kind: 'category', id: c.category.id })} title="Spending over time">
+        {c.category.name}
+      </Link>
       <span className={`mover-delta ${up ? 'soft-neg' : 'soft-pos'}`}>
         {up ? '▲' : '▼'} {formatCents(Math.abs(c.deltaVsAverage))}
       </span>
@@ -273,6 +279,15 @@ function Mover({ c }: { c: CategoryReport }) {
         {formatCents(c.soFar)} vs {formatCents(c.soFarAverage)} avg
       </span>
     </li>
+  )
+}
+
+/** Link to the drill-down page for a row; shown on hover so the row's own click still toggles it. */
+function Drill({ scope }: { scope: TrendScope }) {
+  return (
+    <Link className="drill" to={trendPath(scope)} title="Spending over time" onClick={(e) => e.stopPropagation()}>
+      ↗
+    </Link>
   )
 }
 

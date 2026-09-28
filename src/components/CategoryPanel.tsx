@@ -4,6 +4,7 @@ import type { CategoryRow } from '../model/budgetMath'
 import { monthOf } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
+import { trendPath } from '../model/trend'
 import type { BudgetFile, Cents, MonthKey, Transaction } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { NameInput } from './NameInput'
@@ -104,7 +105,9 @@ export function CategoryPanel({
               </button>
             </h3>
           )}
-          <span className="muted">{group?.name}</span>
+          <span className="muted">
+            {group?.name} · <Link to={trendPath({ kind: 'category', id: category.id })}>Spending over time ›</Link>
+          </span>
         </div>
         <button type="button" className="link close" aria-label="Close" onClick={onClose}>
           ×
