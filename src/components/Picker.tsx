@@ -1,4 +1,8 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+
+export interface PickerHandle {
+  open: () => void
+}
 
 export interface PickerOption {
   /** Stable key; also the value passed to onChange. */
@@ -13,21 +17,17 @@ const MAX_SHOWN = 200
  * Typeahead dropdown. With `allowCustom`, pressing Enter on text that matches
  * no option commits the typed text itself (used for payees).
  */
-export function Picker({
-  options,
-  value,
-  placeholder,
-  allowCustom = false,
-  buttonClassName = '',
-  onChange,
-}: {
-  options: PickerOption[]
-  value: string
-  placeholder?: string
-  allowCustom?: boolean
-  buttonClassName?: string
-  onChange: (key: string) => void
-}) {
+export const Picker = forwardRef<
+  PickerHandle,
+  {
+    options: PickerOption[]
+    value: string
+    placeholder?: string
+    allowCustom?: boolean
+    buttonClassName?: string
+    onChange: (key: string) => void
+  }
+>(function Picker({ options, value, placeholder, allowCustom = false, buttonClassName = '', onChange }, ref) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -60,6 +60,8 @@ export function Picker({
     setActive(Math.max(0, options.findIndex((o) => o.key === value)))
     setOpen(true)
   }
+
+  useImperativeHandle(ref, () => ({ open: openPicker }))
 
   const commit = (key: string) => {
     if (key !== value) onChange(key)
@@ -171,4 +173,4 @@ export function Picker({
       )}
     </>
   )
-}
+})

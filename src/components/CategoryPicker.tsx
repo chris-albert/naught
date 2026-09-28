@@ -1,19 +1,14 @@
-import { useMemo } from 'react'
+import { forwardRef, useMemo } from 'react'
 import type { BudgetFile } from '../model/types'
 import { INCOME_CATEGORY_ID } from '../model/types'
-import { Picker, type PickerOption } from './Picker'
+import { Picker, type PickerHandle, type PickerOption } from './Picker'
 
 const NONE = ''
 
-export function CategoryPicker({
-  file,
-  value,
-  onChange,
-}: {
-  file: BudgetFile
-  value: string | null
-  onChange: (categoryId: string | null) => void
-}) {
+export const CategoryPicker = forwardRef<
+  PickerHandle,
+  { file: BudgetFile; value: string | null; onChange: (categoryId: string | null) => void }
+>(function CategoryPicker({ file, value, onChange }, ref) {
   const options = useMemo<PickerOption[]>(() => {
     const groupName = new Map(file.categoryGroups.map((g) => [g.id, g.name]))
     return [
@@ -27,10 +22,11 @@ export function CategoryPicker({
 
   return (
     <Picker
+      ref={ref}
       options={options}
       value={value ?? NONE}
       buttonClassName={value ? '' : 'needs-category'}
       onChange={(key) => onChange(key === NONE ? null : key)}
     />
   )
-}
+})
