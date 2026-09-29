@@ -27,3 +27,20 @@ describe('ensurePaymentCategories', () => {
     expect(out.categories).toHaveLength(1)
   })
 })
+
+describe('ensurePaymentCategories hidden state', () => {
+  it('hides the payment category of a closed card and shows it again when the card is reopened', () => {
+    const file = emptyBudget('t')
+    file.accounts.push({ id: 'visa', name: 'Visa', type: 'credit', onBudget: true, closed: false })
+    const open = ensurePaymentCategories(file)
+    const catId = open.accounts[0].paymentCategoryId!
+    expect(open.categories.find((c) => c.id === catId)!.hidden).toBe(false)
+
+    const closed = ensurePaymentCategories({ ...open, accounts: [{ ...open.accounts[0], closed: true }] })
+    expect(closed.categories.find((c) => c.id === catId)!.hidden).toBe(true)
+    expect(ensurePaymentCategories(closed)).toBe(closed)
+
+    const reopened = ensurePaymentCategories({ ...closed, accounts: [{ ...closed.accounts[0], closed: false }] })
+    expect(reopened.categories.find((c) => c.id === catId)!.hidden).toBe(false)
+  })
+})

@@ -244,13 +244,22 @@ export function CategoryPanel({
                 <small className="muted">Savings-style: money here is set aside, and spending from it is a draw, not a living expense.</small>
               </span>
             </label>
-            <label className="option">
-              <input type="checkbox" checked={category.hidden} onChange={(e) => updateCategory(category.id, { hidden: e.target.checked })} />
-              <span>
-                Hidden
-                <small className="muted">Kept out of the budget table unless "show hidden" is on.</small>
-              </span>
-            </label>
+            {isPaymentCategory ? (
+              <div className="option">
+                <span>
+                  Hidden
+                  <small className="muted">Follows the card: hidden while the account is closed.</small>
+                </span>
+              </div>
+            ) : (
+              <label className="option">
+                <input type="checkbox" checked={category.hidden} onChange={(e) => updateCategory(category.id, { hidden: e.target.checked })} />
+                <span>
+                  Hidden
+                  <small className="muted">Kept out of the budget table unless "show hidden" is on.</small>
+                </span>
+              </label>
+            )}
           </>
         )}
       </section>
