@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CategoryTrend } from '../components/CategoryTrend'
 import { CumulativeLine } from '../components/CumulativeLine'
+import { Info } from '../components/Info'
 import { MonthlyBars } from '../components/MonthlyBars'
 import { currentMonth, formatMonth } from '../model/dates'
 import { formatCents } from '../model/money'
@@ -141,16 +142,48 @@ export function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            <SummaryRow label="Income" title="Income category plus money arriving directly in categories" values={summaries.map((s) => s.income)} />
-            <SummaryRow label="Living spending" title="Net outflow from non-reserve categories" values={summaries.map((s) => s.living)} />
+            <SummaryRow
+              label="Income"
+              info="Money that came in this month: everything categorized as Income, plus any deposit that landed directly in a category (like a paycheck parked in Buffer). Transfers between your own accounts do not count."
+              values={summaries.map((s) => s.income)}
+            />
+            <SummaryRow
+              label="Living spending"
+              info="What you spent from your everyday categories, after refunds. Reserve categories are not included. This is the number your savings rate is based on."
+              values={summaries.map((s) => s.living)}
+            />
             {includeReserves && (
               <>
-                <SummaryRow label="Set aside" title="Assigned to reserves plus inflows landing in them" values={summaries.map((s) => s.setAside)} signed />
-                <SummaryRow label="Drawn from reserves" title="Spent out of reserve categories; already counted when set aside" values={summaries.map((s) => s.drawn)} />
+                <SummaryRow
+                  label="Set aside"
+                  info="Money moved into reserve categories this month: what you assigned to them plus any deposit landing in them. It counts against this month so that spending it later does not. Negative when you pulled money back out of a reserve."
+                  values={summaries.map((s) => s.setAside)}
+                  signed
+                />
+                <SummaryRow
+                  label="Drawn from reserves"
+                  info="Money spent out of reserve categories, like paying for the vacation you saved for. It was already counted in the month it was set aside, so it does not reduce this month's net. Shown so you can see how much your reserves are being used."
+                  values={summaries.map((s) => s.drawn)}
+                />
               </>
             )}
-            <SummaryRow label="Net" title={includeReserves ? 'Income − living − set aside' : 'Income − living'} values={summaries.map((s) => s.net)} signed />
-            <SummaryRow label="Cumulative net" values={summaries.map((s) => s.cumulativeNet)} signed noTotals />
+            <SummaryRow
+              label="Net"
+              info={
+                includeReserves
+                  ? 'Income minus living spending minus set aside: what was left over this month after everyday spending and funding your reserves.'
+                  : 'Income minus living spending: what was left over this month after everyday spending.'
+              }
+              values={summaries.map((s) => s.net)}
+              signed
+            />
+            <SummaryRow
+              label="Cumulative net"
+              info="A running total of each month's net, starting from zero at the first month shown. Going up means you are ending more months ahead than behind over this range."
+              values={summaries.map((s) => s.cumulativeNet)}
+              signed
+              noTotals
+            />
           </tbody>
           {groups.map((g) => {
             const max = Math.max(1, ...g.categories.flatMap((c) => c.byMonth))
@@ -227,13 +260,13 @@ function withoutReserves(groups: GroupReport[]): GroupReport[] {
 
 function SummaryRow({
   label,
-  title,
+  info,
   values,
   signed = false,
   noTotals = false,
 }: {
   label: string
-  title?: string
+  info: string
   values: Cents[]
   signed?: boolean
   noTotals?: boolean
@@ -244,7 +277,10 @@ function SummaryRow({
   const show = (v: Cents) => (v === 0 ? <span className="muted">–</span> : formatCents(v))
   return (
     <tr className="total-row">
-      <th title={title}>{label}</th>
+      <th>
+        {label}
+        <Info text={info} />
+      </th>
       {values.map((v, i) => (
         <td key={i} className={`num ${cls(v)}`}>
           {show(v)}
