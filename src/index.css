@@ -588,3 +588,13 @@ kbd { font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--
   .reconcile-details { grid-template-columns: 1fr; }
   .trend-transactions td.memo { max-width: 160px; }
 }
+
+/* ---------- info bubbles ---------- */
+.info { position: relative; display: inline-block; margin-left: 6px; vertical-align: 1px; cursor: help; outline: none; }
+.info-icon { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--muted); color: var(--muted); font: italic 700 9px/1 Georgia, 'Times New Roman', serif; }
+.info:hover .info-icon, .info:focus .info-icon { border-color: var(--accent); color: var(--accent); }
+.info-bubble { display: none; position: absolute; left: -8px; top: calc(100% + 8px); z-index: 5; width: max-content; max-width: min(280px, 70vw); padding: 8px 11px; border-radius: 10px; background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--border); box-shadow: var(--shadow-lg); font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--text); white-space: normal; text-transform: none; letter-spacing: normal; animation: info-in 0.12s ease; }
+.info:hover .info-bubble, .info:focus .info-bubble { display: block; }
+@keyframes info-in { from { opacity: 0; transform: translateY(-4px); } }
+/* the sticky first column stacks later rows over earlier ones; lift the row whose bubble is open */
+.report .total-row th:first-child:hover, .report .total-row th:first-child:focus-within { z-index: 2; }
