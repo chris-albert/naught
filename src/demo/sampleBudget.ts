@@ -60,7 +60,8 @@ const UNCATEGORIZED: [number, string, Cents][] = [
 /** Rules the demo household already made; see src/model/payeeRules.ts. */
 const payeeRules: Record<string, string> = { 'Acme Corp': INCOME_CATEGORY_ID, 'Maple Street Apartments': 'demo-rent' }
 
-const PAYCHECK: Cents = 260000 // twice a month; the plans above assign almost all of it
+// Paid on the 1st, so the month's assignments are covered whatever day the demo is opened.
+const PAYCHECK: Cents = 520000 // the plans above assign almost all of it
 const SAVINGS_TRANSFER: Cents = 200000 // roughly what the goals set aside
 const OPENING_CHECKING: Cents = 320000
 const OPENING_SAVINGS: Cents = 850000
@@ -117,9 +118,7 @@ export function sampleBudget(today = new Date().toISOString().slice(0, 10)): Bud
     // The opening balances were already saved up: park them in the emergency fund.
     if (month === first) assigned[month]['demo-emergency'] += OPENING_CHECKING + OPENING_SAVINGS
 
-    for (const day of [1, 15]) {
-      add({ accountId: checking.id, date: iso(month, day), payee: 'Acme Corp', categoryId: INCOME_CATEGORY_ID, amount: PAYCHECK, transferAccountId: null })
-    }
+    add({ accountId: checking.id, date: iso(month, 1), payee: 'Acme Corp', categoryId: INCOME_CATEGORY_ID, amount: PAYCHECK, transferAccountId: null })
 
     let spentOnCard = 0
     for (const p of plans) {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { computeMonth } from '../model/budgetMath'
 import { currentMonth } from '../model/dates'
 import { ensurePaymentCategories } from '../model/creditCards'
@@ -37,6 +37,19 @@ describe('sampleBudget', () => {
     expect(m.toBudget).toBeGreaterThanOrEqual(0)
     expect(m.toBudget).toBeLessThan(20000)
     for (const g of m.groups) for (const r of g.rows) expect(r.available).toBeGreaterThanOrEqual(0)
+  })
+
+  describe('whatever day it is opened', () => {
+    afterEach(() => vi.useRealTimers())
+
+    it.each(['2026-10-01', '2026-10-14', '2026-10-15', '2026-10-31', '2027-01-01'])('is fully budgeted on %s', (day) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date(`${day}T12:00:00Z`))
+      const m = computeMonth(ensurePaymentCategories(sampleBudget(day)), currentMonth())
+      expect(m.toBudget).toBeGreaterThanOrEqual(0)
+      expect(m.toBudget).toBeLessThan(20000)
+      for (const g of m.groups) for (const r of g.rows) expect(r.available).toBeGreaterThanOrEqual(0)
+    })
   })
 
   it('has recent uncategorized card transactions, including a repeated payee, and rules only for categorized payees', () => {
