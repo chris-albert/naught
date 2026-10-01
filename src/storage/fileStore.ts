@@ -1,5 +1,6 @@
 import { del, get, set } from 'idb-keyval'
 import type { BudgetFile } from '../model/types'
+import { parseBudgetFile, type BudgetStorage, type OpenedBudget } from './storage'
 
 const HANDLE_KEY = 'naught.fileHandle'
 
@@ -8,24 +9,24 @@ export const supportsFileSystemAccess =
 
 const pickerTypes: FilePickerAcceptType[] = [{ description: 'Naught budget', accept: { 'application/json': ['.naught.json', '.json'] } }]
 
-export interface OpenedFile {
-  handle: FileSystemFileHandle
-  data: BudgetFile
-}
+export const fileStorage = (handle: FileSystemFileHandle): BudgetStorage => ({
+  name: handle.name,
+  write: (data) => writeHandle(handle, data),
+})
 
-export async function openExistingFile(): Promise<OpenedFile | null> {
+export async function openExistingFile(): Promise<OpenedBudget | null> {
   try {
     const [handle] = await window.showOpenFilePicker({ types: pickerTypes, multiple: false })
     const data = await readHandle(handle)
     await set(HANDLE_KEY, handle)
-    return { handle, data }
+    return { data, storage: fileStorage(handle) }
   } catch (e) {
     if ((e as DOMException).name === 'AbortError') return null
     throw e
   }
 }
 
-export async function createNewFile(data: BudgetFile): Promise<FileSystemFileHandle | null> {
+export async function createNewFile(data: BudgetFile): Promise<BudgetStorage | null> {
   try {
     const handle = await window.showSaveFilePicker({
       types: pickerTypes,
@@ -33,7 +34,7 @@ export async function createNewFile(data: BudgetFile): Promise<FileSystemFileHan
     })
     await writeHandle(handle, data)
     await set(HANDLE_KEY, handle)
-    return handle
+    return fileStorage(handle)
   } catch (e) {
     if ((e as DOMException).name === 'AbortError') return null
     throw e
@@ -60,9 +61,7 @@ export async function forgetHandle(): Promise<void> {
 
 export async function readHandle(handle: FileSystemFileHandle): Promise<BudgetFile> {
   const file = await handle.getFile()
-  const parsed = JSON.parse(await file.text()) as BudgetFile
-  if (parsed.version !== 1) throw new Error(`Unsupported file version: ${String(parsed.version)}`)
-  return parsed
+  return parseBudgetFile(await file.text())
 }
 
 export async function writeHandle(handle: FileSystemFileHandle, data: BudgetFile): Promise<void> {

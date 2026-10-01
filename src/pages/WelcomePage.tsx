@@ -1,26 +1,48 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { emptyBudget } from '../model/types'
+import { emptyBudget, type BudgetFile } from '../model/types'
 import {
   createNewFile,
   forgetHandle,
   openExistingFile,
-  readHandle,
-  requestPermission,
   supportsFileSystemAccess,
 } from '../storage/fileStore'
+import {
+  createDriveBudget,
+  forgetDriveFile,
+  listDriveBudgets,
+  loadGoogleSignIn,
+  openDriveBudget,
+  supportsGoogleDrive,
+  type DriveFile,
+} from '../storage/googleDrive'
+import { parseBudgetFile, type OpenedBudget } from '../storage/storage'
 import { useBudget } from '../store/budgetStore'
 
-export function WelcomePage({
-  pendingHandle,
-  onPendingDone,
-}: {
-  pendingHandle: FileSystemFileHandle | null
-  onPendingDone: () => void
-}) {
+/** The budget that was open last time, which needs a click before the browser lets us back in. */
+export interface PendingBudget {
+  name: string
+  /** Null when the user declines. */
+  reopen: () => Promise<OpenedBudget | null>
+  forget: () => Promise<void>
+}
+
+export function WelcomePage({ pending, onPendingDone }: { pending: PendingBudget | null; onPendingDone: () => void }) {
   const load = useBudget((s) => s.load)
   const [name, setName] = useState('My budget')
   const [error, setError] = useState<string | null>(null)
+  /** Budgets in the user's Drive; null until they connect. */
+  const [driveFiles, setDriveFiles] = useState<DriveFile[] | null>(null)
+
+  useEffect(() => {
+    if (supportsGoogleDrive) loadGoogleSignIn().catch(() => {})
+  }, [])
+
+  const createInDrive = async (data: BudgetFile) => {
+    const storage = await createDriveBudget(data)
+    await forgetHandle()
+    load(data, storage)
+  }
 
   const run = async (fn: () => Promise<void>) => {
     setError(null)
@@ -39,16 +61,17 @@ export function WelcomePage({
       </div>
       <p className="muted">A zero-based budget that lives in a file you own.</p>
 
-      {pendingHandle && (
+      {pending && (
         <section className="card">
           <p>
-            Reopen <strong>{pendingHandle.name}</strong>?
+            Reopen <strong>{pending.name}</strong>?
           </p>
           <button
             onClick={() =>
               run(async () => {
-                if (await requestPermission(pendingHandle)) {
-                  load(await readHandle(pendingHandle), pendingHandle)
+                const opened = await pending.reopen()
+                if (opened) {
+                  load(opened.data, opened.storage)
                   onPendingDone()
                 }
               })
@@ -60,7 +83,7 @@ export function WelcomePage({
             className="secondary"
             onClick={() =>
               run(async () => {
-                await forgetHandle()
+                await pending.forget()
                 onPendingDone()
               })
             }
@@ -78,7 +101,9 @@ export function WelcomePage({
               onClick={() =>
                 run(async () => {
                   const opened = await openExistingFile()
-                  if (opened) load(opened.data, opened.handle)
+                  if (!opened) return
+                  await forgetDriveFile()
+                  load(opened.data, opened.storage)
                 })
               }
             >
@@ -93,8 +118,10 @@ export function WelcomePage({
               onClick={() =>
                 run(async () => {
                   const data = emptyBudget(name.trim() || 'My budget')
-                  const handle = await createNewFile(data)
-                  if (handle) load(data, handle)
+                  const storage = await createNewFile(data)
+                  if (!storage) return
+                  await forgetDriveFile()
+                  load(data, storage)
                 })
               }
             >
@@ -110,6 +137,54 @@ export function WelcomePage({
             browser. You can still try it in memory and use "Download backup" to keep your data.
           </p>
           <button onClick={() => load(emptyBudget(name.trim() || 'My budget'), null)}>Start without a file</button>
+        </section>
+      )}
+
+      {supportsGoogleDrive && (
+        <section className="card">
+          <h3>Google Drive</h3>
+          <p className="muted">
+            Keep the budget in your own Google Drive and open it from any browser, phones included. Naught can only see
+            the files it puts there.
+          </p>
+          {!driveFiles ? (
+            <button onClick={() => run(async () => setDriveFiles(await listDriveBudgets()))}>Connect Google Drive</button>
+          ) : (
+            <>
+              {driveFiles.map((f) => (
+                <p key={f.id}>
+                  <button
+                    onClick={() =>
+                      run(async () => {
+                        const opened = await openDriveBudget(f)
+                        await forgetHandle()
+                        load(opened.data, opened.storage)
+                      })
+                    }
+                  >
+                    Open {f.name}
+                  </button>
+                </p>
+              ))}
+              <p>
+                <input value={name} onChange={(e) => setName(e.target.value)} />{' '}
+                <button className="secondary" onClick={() => run(() => createInDrive(emptyBudget(name.trim() || 'My budget')))}>
+                  Create new budget in Drive
+                </button>
+              </p>
+              <label className="muted">
+                Or copy an existing budget file to Drive:{' '}
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={(e) => {
+                    const picked = e.target.files?.[0]
+                    if (picked) run(async () => createInDrive(parseBudgetFile(await picked.text())))
+                  }}
+                />
+              </label>
+            </>
+          )}
         </section>
       )}
 

@@ -2,17 +2,18 @@ import { create } from 'zustand'
 import { ensurePaymentCategories } from '../model/creditCards'
 import { deletePayeeRule, setPayeeRule } from '../model/payeeRules'
 import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type CategoryGroup, type Cents, type MonthKey, type Transaction } from '../model/types'
-import { writeHandle } from '../storage/fileStore'
+import { confirm } from '../components/ConfirmDialog'
+import { ConflictError, type BudgetStorage } from '../storage/storage'
 
 export type SaveState = 'clean' | 'dirty' | 'saving' | 'error' | 'no-file'
 
 interface BudgetState {
   file: BudgetFile | null
-  handle: FileSystemFileHandle | null
+  storage: BudgetStorage | null
   saveState: SaveState
   /** Sample data opened from the landing page; never saved anywhere. */
   demo: boolean
-  load: (file: BudgetFile, handle: FileSystemFileHandle | null, demo?: boolean) => void
+  load: (file: BudgetFile, storage: BudgetStorage | null, demo?: boolean) => void
   close: () => void
   update: (fn: (file: BudgetFile) => BudgetFile) => void
   setAssigned: (month: MonthKey, categoryId: string, cents: Cents) => void
@@ -41,22 +42,22 @@ interface BudgetState {
 
 export const useBudget = create<BudgetState>((set, get) => ({
   file: null,
-  handle: null,
+  storage: null,
   saveState: 'no-file',
   demo: false,
 
-  load: (file, handle, demo = false) => {
+  load: (file, storage, demo = false) => {
     const ensured = ensurePaymentCategories(file)
-    set({ file: ensured, handle, demo, saveState: handle ? (ensured === file ? 'clean' : 'dirty') : 'no-file' })
+    set({ file: ensured, storage, demo, saveState: storage ? (ensured === file ? 'clean' : 'dirty') : 'no-file' })
     if (ensured !== file) scheduleSave()
   },
 
-  close: () => set({ file: null, handle: null, demo: false, saveState: 'no-file' }),
+  close: () => set({ file: null, storage: null, demo: false, saveState: 'no-file' }),
 
   update: (fn) => {
-    const { file, handle } = get()
+    const { file, storage } = get()
     if (!file) return
-    set({ file: ensurePaymentCategories(fn(file)), saveState: handle ? 'dirty' : 'no-file' })
+    set({ file: ensurePaymentCategories(fn(file)), saveState: storage ? 'dirty' : 'no-file' })
     scheduleSave()
   },
 
@@ -168,16 +169,67 @@ function scheduleSave() {
   saveTimer = setTimeout(saveNow, 800)
 }
 
-export async function saveNow(): Promise<void> {
-  const { file, handle } = useBudget.getState()
-  if (!file || !handle) return
+export const saveNow = () => save()
+
+let writing = false
+let resolving = false
+
+async function save(overwrite = false): Promise<void> {
+  const { file, storage } = useBudget.getState()
+  if (!file || !storage || resolving) return
+  // One write at a time, so a write never sees its predecessor as someone else's change.
+  if (writing) return scheduleSave()
+  writing = true
   useBudget.setState({ saveState: 'saving' })
   try {
-    await writeHandle(handle, file)
+    await storage.write(file, overwrite)
     // Only mark clean if nothing changed while we were writing.
     if (useBudget.getState().file === file) useBudget.setState({ saveState: 'clean' })
   } catch (e) {
+    if (e instanceof ConflictError) {
+      writing = false
+      return resolveConflict(storage)
+    }
     console.error('save failed', e)
     useBudget.setState({ saveState: 'error' })
+  } finally {
+    writing = false
+  }
+}
+
+/** Unsaved changes here and a newer copy in storage: the user picks which one survives. */
+async function resolveConflict(storage: BudgetStorage, theirs?: BudgetFile | null): Promise<void> {
+  useBudget.setState({ saveState: 'error' })
+  resolving = true
+  const overwrite = await confirm({
+    title: 'This budget was changed on another device',
+    message: 'Your latest changes here are not saved yet. Load the other version and redo them, or overwrite it with the version on this device.',
+    confirmLabel: 'Overwrite',
+    cancelLabel: 'Load the other version',
+    danger: true,
+  })
+  resolving = false
+  if (useBudget.getState().storage !== storage) return
+  if (overwrite) return save(true)
+  try {
+    theirs ??= await storage.readIfChanged?.()
+    if (theirs) useBudget.getState().load(theirs, storage)
+  } catch (e) {
+    console.error('reload failed', e)
+  }
+}
+
+/** Pick up changes saved from another device. Does nothing for storage that cannot tell. */
+export async function reloadIfChanged(): Promise<void> {
+  const { storage, saveState } = useBudget.getState()
+  if (!storage?.readIfChanged || saveState !== 'clean') return
+  try {
+    const theirs = await storage.readIfChanged()
+    const now = useBudget.getState()
+    if (!theirs || now.storage !== storage) return
+    if (now.saveState === 'clean') now.load(theirs, storage)
+    else await resolveConflict(storage, theirs)
+  } catch (e) {
+    console.warn('could not check for changes', e)
   }
 }
