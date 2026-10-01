@@ -133,7 +133,8 @@ export function SyncPage() {
           <>
             <p className="muted">
               Create a connection at SimpleFIN Bridge, copy the setup token, and paste it here. The token can only be
-              claimed once, and the resulting credentials stay in this browser, not in your budget file.
+              claimed once. The resulting credentials stay in this browser, not in your budget file; for a budget in
+              Google Drive they are also kept in a hidden folder there, so your other devices connect by themselves.
             </p>
             <input
               style={{ width: '100%' }}

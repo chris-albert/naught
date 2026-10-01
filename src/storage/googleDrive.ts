@@ -5,11 +5,12 @@ import { ConflictError, parseBudgetFile, type BudgetStorage, type OpenedBudget }
 /**
  * Budget files in the user's own Google Drive, reached straight from the
  * browser. The `drive.file` scope only lets the app see files it created, so
- * every file it can list is a budget.
+ * every file it can list is a budget. `drive.appdata` adds a hidden folder
+ * only this app can read, used for the SimpleFIN credentials.
  */
 
 const CLIENT_ID: string | undefined = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const SCOPE = 'https://www.googleapis.com/auth/drive.file'
+const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata'
 const FILES = 'https://www.googleapis.com/drive/v3/files'
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
 
@@ -189,3 +190,31 @@ export async function createDriveBudget(data: BudgetFile): Promise<BudgetStorage
 
 export const rememberedDriveFile = () => get<DriveFile>(FILE_KEY)
 export const forgetDriveFile = () => del(FILE_KEY)
+
+/** Whether the last opened budget lives in Drive and we are signed in, so app data is reachable without a sign-in popup. */
+export const canUseAppData = async () => supportsGoogleDrive && !!(await rememberedDriveFile()) && (await hasDriveAccess())
+
+async function appDataId(name: string): Promise<string | undefined> {
+  const params = new URLSearchParams({ spaces: 'appDataFolder', q: `name='${name}'`, fields: 'files(id)' })
+  const res = await api(`${FILES}?${params}`)
+  return ((await res.json()) as { files: { id: string }[] }).files[0]?.id
+}
+
+/** Contents of a file in the app's hidden Drive folder; undefined if it does not exist. */
+export async function readAppData(name: string): Promise<string | undefined> {
+  const id = await appDataId(name)
+  return id && (await api(`${FILES}/${id}?alt=media`)).text()
+}
+
+export async function writeAppData(name: string, text: string): Promise<void> {
+  let id = await appDataId(name)
+  if (!id) {
+    const res = await api(FILES, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, parents: ['appDataFolder'] }),
+    })
+    id = ((await res.json()) as { id: string }).id
+  }
+  await api(`${UPLOAD}/${id}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: text })
+}

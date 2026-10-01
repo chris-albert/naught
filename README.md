@@ -49,7 +49,10 @@ Early skeleton. Working today:
   (banks change their id and amount when they post). Posted ones are
   de-duplicated by bank id and by same-amount-within-10-days against manually
   entered ones. The SimpleFIN credentials live in the browser's IndexedDB, not
-  in the file.
+  in the file. For a budget in Google Drive they are also copied to the app's
+  hidden Drive folder (`drive.appdata`), so other devices signed in to the
+  same Google account connect without a new token; disconnecting on one
+  device disconnects them all.
 
 - Payee rules: after you pick a category for a transaction, the row offers to
   always use that category for the payee. Saying yes categorizes the other
@@ -78,8 +81,9 @@ secret in a browser-only app):
 1. In the [Google Cloud console](https://console.cloud.google.com/), create a
    project and enable the **Google Drive API** (APIs & Services → Library).
 2. Under Google Auth Platform (OAuth consent screen), set the app name and
-   support email, audience **External**, and add the scope
-   `https://www.googleapis.com/auth/drive.file` under Data Access.
+   support email, audience **External**, and add the scopes
+   `https://www.googleapis.com/auth/drive.file` and
+   `https://www.googleapis.com/auth/drive.appdata` under Data Access.
 3. Under Clients, create an OAuth client of type **Web application**. Add
    every origin the app is served from to *Authorized JavaScript origins*:
    `http://localhost:5173` and `https://naught.lbert.io`. No redirect URIs.

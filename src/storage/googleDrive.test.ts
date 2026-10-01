@@ -9,7 +9,7 @@ vi.mock('idb-keyval', () => ({
   del: vi.fn(async () => {}),
 }))
 
-import { createDriveBudget, listDriveBudgets, openDriveBudget } from './googleDrive'
+import { createDriveBudget, listDriveBudgets, openDriveBudget, readAppData, writeAppData } from './googleDrive'
 
 /** A one-file fake of the Drive REST API. `md5` stands in for the content checksum. */
 function fakeDrive(initial = emptyBudget('remote')) {
@@ -104,5 +104,39 @@ describe('google drive storage', () => {
     const { storage } = await openDriveBudget(file)
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 500 })))
     await expect(storage.write(emptyBudget('x'))).rejects.toThrow('Google Drive request failed (500)')
+  })
+})
+
+describe('google drive app data', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+
+  it('creates the hidden file on first write, then reuses it', async () => {
+    const files = new Map<string, { name: string; text: string }>()
+    const created: unknown[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string, init: RequestInit = {}) => {
+        const url = new URL(input)
+        const id = url.pathname.split('/').pop()!
+        if (init.method === 'POST') {
+          const meta = JSON.parse(init.body as string)
+          created.push(meta)
+          files.set('h1', { name: meta.name, text: '' })
+          return new Response(JSON.stringify({ id: 'h1' }))
+        }
+        if (init.method === 'PATCH') {
+          files.get(id)!.text = init.body as string
+          return new Response('{}')
+        }
+        if (url.searchParams.get('alt') === 'media') return new Response(files.get(id)!.text)
+        expect(url.searchParams.get('spaces')).toBe('appDataFolder')
+        return new Response(JSON.stringify({ files: [...files].map(([id]) => ({ id })) }))
+      }),
+    )
+    expect(await readAppData('key.json')).toBeUndefined()
+    await writeAppData('key.json', 'one')
+    await writeAppData('key.json', 'two')
+    expect(created).toEqual([{ name: 'key.json', parents: ['appDataFolder'] }])
+    expect(await readAppData('key.json')).toBe('two')
   })
 })
