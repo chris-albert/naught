@@ -12,9 +12,10 @@ import { PayeeRulesPage } from './pages/PayeeRulesPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SyncPage } from './pages/SyncPage'
 import { TrendPage } from './pages/TrendPage'
-import { WelcomePage } from './pages/WelcomePage'
-import { hasPermission, readHandle, rememberedHandle } from './storage/fileStore'
-import { useBudget } from './store/budgetStore'
+import { WelcomePage, type PendingBudget } from './pages/WelcomePage'
+import { fileStorage, forgetHandle, hasPermission, readHandle, rememberedHandle, requestPermission } from './storage/fileStore'
+import { forgetDriveFile, hasDriveAccess, openDriveBudget, rememberedDriveFile, supportsGoogleDrive } from './storage/googleDrive'
+import { reloadIfChanged, useBudget } from './store/budgetStore'
 
 export default function App() {
   return (
@@ -41,7 +42,7 @@ function DemoPage() {
 function BudgetApp() {
   const file = useBudget((s) => s.file)
   const load = useBudget((s) => s.load)
-  const [pendingHandle, setPendingHandle] = useState<FileSystemFileHandle | null>(null)
+  const [pending, setPending] = useState<PendingBudget | null>(null)
   const [restoring, setRestoring] = useState(true)
   const [navOpen, setNavOpen] = useState(false)
 
@@ -55,12 +56,25 @@ function BudgetApp() {
     ;(async () => {
       try {
         if (useBudget.getState().file) return // the demo, or a file opened before navigating here
+        const driveFile = supportsGoogleDrive ? await rememberedDriveFile() : undefined
+        if (driveFile) {
+          // Without a valid sign-in, reopening needs a click so the browser allows Google's popup.
+          const opened = (await hasDriveAccess()) ? await openDriveBudget(driveFile).catch(() => null) : null
+          if (cancelled) return
+          if (opened) load(opened.data, opened.storage)
+          else setPending({ name: `${driveFile.name} from Google Drive`, reopen: () => openDriveBudget(driveFile), forget: forgetDriveFile })
+          return
+        }
         const handle = await rememberedHandle()
         if (!handle || cancelled) return
         if (await hasPermission(handle)) {
-          load(await readHandle(handle), handle)
+          load(await readHandle(handle), fileStorage(handle))
         } else {
-          setPendingHandle(handle)
+          setPending({
+            name: handle.name,
+            reopen: async () => ((await requestPermission(handle)) ? { data: await readHandle(handle), storage: fileStorage(handle) } : null),
+            forget: forgetHandle,
+          })
         }
       } catch (e) {
         console.warn('could not restore last file', e)
@@ -73,8 +87,17 @@ function BudgetApp() {
     }
   }, [load])
 
+  // Coming back to the tab: pick up anything saved from another device meanwhile.
+  useEffect(() => {
+    const check = () => {
+      if (document.visibilityState === 'visible') void reloadIfChanged()
+    }
+    document.addEventListener('visibilitychange', check)
+    return () => document.removeEventListener('visibilitychange', check)
+  }, [])
+
   if (restoring) return null
-  if (!file) return <WelcomePage pendingHandle={pendingHandle} onPendingDone={() => setPendingHandle(null)} />
+  if (!file) return <WelcomePage pending={pending} onPendingDone={() => setPending(null)} />
 
   return (
     <div className="layout">

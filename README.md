@@ -11,6 +11,12 @@ Early skeleton. Working today:
 
 - Open or create a budget file (File System Access API, so Chromium browsers
   only for writing; other browsers get an in-memory mode plus "Download backup").
+- Or keep the budget in Google Drive (works in every browser, phones
+  included). The app talks to Drive straight from the browser with the
+  `drive.file` scope, so it only sees the files it created. Returning to the
+  tab picks up changes saved from another device; if both sides changed, it
+  asks which version to keep. Only offered when a Google client ID is
+  configured (see Google Drive setup).
 - Import a YNAB budget export (the JSON from the YNAB API / `ynab-export`).
 - Budget page: month navigation, To Budget, per-category assigned / activity /
   available with editable assignments. Autosaves to the file. Clicking a
@@ -43,7 +49,10 @@ Early skeleton. Working today:
   (banks change their id and amount when they post). Posted ones are
   de-duplicated by bank id and by same-amount-within-10-days against manually
   entered ones. The SimpleFIN credentials live in the browser's IndexedDB, not
-  in the file.
+  in the file. For a budget in Google Drive they are also copied to the app's
+  hidden Drive folder (`drive.appdata`), so other devices signed in to the
+  same Google account connect without a new token; disconnecting on one
+  device disconnects them all.
 
 - Payee rules: after you pick a category for a transaction, the row offers to
   always use that category for the payee. Saying yes categorizes the other
@@ -63,6 +72,29 @@ pnpm test       # vitest
 pnpm typecheck
 pnpm build      # static output in dist/
 ```
+
+### Google Drive setup
+
+The Drive option needs an OAuth client ID, which is public (there is no
+secret in a browser-only app):
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a
+   project and enable the **Google Drive API** (APIs & Services → Library).
+2. Under Google Auth Platform (OAuth consent screen), set the app name and
+   support email, audience **External**, and add the scopes
+   `https://www.googleapis.com/auth/drive.file` and
+   `https://www.googleapis.com/auth/drive.appdata` under Data Access.
+3. Under Clients, create an OAuth client of type **Web application**. Add
+   every origin the app is served from to *Authorized JavaScript origins*:
+   `http://localhost:5173` and `https://naught.lbert.io`. No redirect URIs.
+4. Put the client ID in `VITE_GOOGLE_CLIENT_ID`: in `.env.local` for
+   development, and as a build environment variable in the Cloudflare Pages
+   project for production and previews.
+
+While the consent screen is in *Testing*, only the Google accounts listed as
+test users can sign in. Publishing it to production lifts that. Branch
+previews have their own hostnames and only work with Drive if that origin is
+added to the client too (wildcards are not allowed).
 
 Routes: `/` is the landing page, `/demo` opens six months of generated
 sample data in memory (`src/demo/sampleBudget.ts`), and the app lives under
@@ -88,7 +120,9 @@ stays separate from production and from other branches.
 
 - `src/model/` – data types (`BudgetFile`), money and date helpers, and
   `budgetMath.ts`, which computes a month's envelope view.
+- `src/storage/storage.ts` – the `BudgetStorage` interface the store saves through.
 - `src/storage/fileStore.ts` – file handle persistence and read/write.
+- `src/storage/googleDrive.ts` – Google sign-in and the Drive REST calls.
 - `src/store/budgetStore.ts` – in-memory state (zustand) with debounced autosave.
 - `src/import/ynab.ts` – YNAB JSON importer.
 - `src/demo/sampleBudget.ts` – deterministic sample data for `/demo`.

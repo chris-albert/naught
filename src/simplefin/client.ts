@@ -1,11 +1,16 @@
 import { del, get, set } from 'idb-keyval'
+import { canUseAppData, readAppData, writeAppData } from '../storage/googleDrive'
 
 /**
  * SimpleFIN Bridge client. The access URL carries the credentials and is kept
- * in IndexedDB only, never in the budget file (which may be synced to Drive).
+ * in IndexedDB, never in the budget file. For a budget in Google Drive it is
+ * also copied to the app's hidden Drive folder, so other devices pick it up.
  */
 
 const ACCESS_URL_KEY = 'naught.simplefin.accessUrl'
+/** Set when this device changed the access URL and Drive does not have the change yet. */
+const UNSYNCED_KEY = 'naught.simplefin.unsynced'
+const DRIVE_NAME = 'simplefin.json'
 
 export interface SimplefinTransaction {
   id: string
@@ -39,8 +44,50 @@ export interface SimplefinResult {
   errors: string[]
 }
 
-export const getAccessUrl = () => get<string>(ACCESS_URL_KEY)
-export const clearAccessUrl = () => del(ACCESS_URL_KEY)
+/**
+ * Drive's copy wins, unless this device has a change it has not uploaded yet
+ * or Drive has no copy at all. A copy holding null means "disconnected".
+ * Returns false when Drive is not in use or not signed in.
+ */
+async function syncWithDrive(): Promise<boolean> {
+  if (!(await canUseAppData())) return false
+  const local = await get<string>(ACCESS_URL_KEY)
+  const stored = await readAppData(DRIVE_NAME)
+  if ((await get<boolean>(UNSYNCED_KEY)) || stored === undefined) {
+    if (local || stored !== undefined) await writeAppData(DRIVE_NAME, JSON.stringify({ accessUrl: local ?? null }))
+    await del(UNSYNCED_KEY)
+    return true
+  }
+  const remote = (JSON.parse(stored) as { accessUrl: string | null }).accessUrl
+  if (remote !== (local ?? null)) await (remote ? set(ACCESS_URL_KEY, remote) : del(ACCESS_URL_KEY))
+  return true
+}
+
+let driveSync: Promise<void> | undefined
+
+/** Sync once per page load. Failing is fine: the key in this browser still works. */
+function syncOnce(): Promise<void> {
+  return (driveSync ??= syncWithDrive().then(
+    (ran) => {
+      if (!ran) driveSync = undefined
+    },
+    (e) => console.warn('could not sync SimpleFIN credentials with Google Drive', e),
+  ))
+}
+
+async function changeAccessUrl(accessUrl: string | undefined): Promise<void> {
+  await (accessUrl ? set(ACCESS_URL_KEY, accessUrl) : del(ACCESS_URL_KEY))
+  await set(UNSYNCED_KEY, true)
+  driveSync = undefined
+  await syncOnce()
+}
+
+export async function getAccessUrl(): Promise<string | undefined> {
+  await syncOnce()
+  return get<string>(ACCESS_URL_KEY)
+}
+
+export const clearAccessUrl = () => changeAccessUrl(undefined)
 
 /**
  * Decode a setup token, claim it, and remember the resulting access URL.
@@ -50,7 +97,7 @@ export async function claimSetupToken(setupToken: string): Promise<string> {
   const input = setupToken.trim()
   if (/^https?:\/\//.test(input)) {
     new URL(input)
-    await set(ACCESS_URL_KEY, input)
+    await changeAccessUrl(input)
     return input
   }
   let claimUrl: string
@@ -63,7 +110,7 @@ export async function claimSetupToken(setupToken: string): Promise<string> {
   const res = await fetch(claimUrl, { method: 'POST' })
   if (!res.ok) throw new Error(`SimpleFIN rejected the token (${res.status}). Tokens can only be claimed once.`)
   const accessUrl = (await res.text()).trim()
-  await set(ACCESS_URL_KEY, accessUrl)
+  await changeAccessUrl(accessUrl)
   return accessUrl
 }
 
