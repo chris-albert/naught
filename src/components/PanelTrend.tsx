@@ -2,19 +2,27 @@ import { useState } from 'react'
 import { formatMonth } from '../model/dates'
 import { formatCents } from '../model/money'
 import type { CategoryReport } from '../model/reports'
-import type { MonthKey } from '../model/types'
+import type { Cents, MonthKey } from '../model/types'
 
 const H = 80
 const TOP = 8 // headroom so a line at the top of the scale does not sit on the plot's edge
 
 /**
- * Compact version of the Reports trend for the category panel: one bar per month, dashed lines for
- * the average across the range and the monthly target (if set). Net money in dips below the baseline.
+ * Compact version of the Reports trend for the category and group panels: one bar per month, dashed
+ * lines for the average across the range and the monthly target (if given). Net money in dips below
+ * the baseline.
  */
-export function PanelTrend({ report, months }: { report: CategoryReport; months: MonthKey[] }) {
+export function PanelTrend({
+  report,
+  months,
+  target,
+}: {
+  report: Pick<CategoryReport, 'byMonth' | 'average'>
+  months: MonthKey[]
+  target?: Cents
+}) {
   const [hover, setHover] = useState<number | null>(null)
   const values = report.byMonth
-  const target = report.category.target
   const hi = Math.max(1, report.average, target ?? 0, ...values)
   const lo = Math.min(0, ...values)
   const y = (v: number) => TOP + ((hi - v) / (hi - lo)) * (H - TOP)

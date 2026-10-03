@@ -187,7 +187,7 @@ export function CategoryPanel({
       {trend && trend.total !== 0 && (
         <section>
           <h4>Last {TREND_MONTHS} months</h4>
-          <PanelTrend report={trend} months={trendMonths} />
+          <PanelTrend report={trend} months={trendMonths} target={target} />
         </section>
       )}
 
