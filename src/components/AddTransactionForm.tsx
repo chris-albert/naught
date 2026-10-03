@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { parseCents } from '../model/money'
 import type { BudgetFile } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { CategoryPicker } from './CategoryPicker'
-import { PayeePicker } from './PayeePicker'
+import { PayeePicker, usePayeeOptions } from './PayeePicker'
 
 /** Local calendar date; toISOString would roll to tomorrow in the evening in western time zones. */
 const today = () => new Date().toLocaleDateString('en-CA')
@@ -11,17 +11,15 @@ const today = () => new Date().toLocaleDateString('en-CA')
 /** Manual entry. New rows start uncleared so a later bank sync can match and clear them. */
 export function AddTransactionForm({ file, accountId }: { file: BudgetFile; accountId: string }) {
   const addTransaction = useBudget((s) => s.addTransaction)
+  const setTransfer = useBudget((s) => s.setTransfer)
   const [date, setDate] = useState(today)
   const [payee, setPayee] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [outflow, setOutflow] = useState('')
   const [inflow, setInflow] = useState('')
 
-  const payees = useMemo(() => {
-    const names = new Set<string>()
-    for (const t of file.transactions) if (t.payee) names.add(t.payee)
-    return [...names].sort((a, b) => a.localeCompare(b)).map((name) => ({ key: name, label: name }))
-  }, [file.transactions])
+  const { options: payees, transferTo } = usePayeeOptions(file)
+  const transferAccountId = transferTo(payee)
 
   const out = parseCents(outflow)
   const inn = parseCents(inflow)
@@ -30,7 +28,8 @@ export function AddTransactionForm({ file, accountId }: { file: BudgetFile; acco
 
   const submit = () => {
     if (!canSubmit) return
-    addTransaction({ accountId, date, payee: payee.trim(), categoryId, memo: '', amount, cleared: 'uncleared', transferAccountId: null })
+    const id = addTransaction({ accountId, date, payee: payee.trim(), categoryId, memo: '', amount, cleared: 'uncleared', transferAccountId: null })
+    if (transferAccountId) setTransfer(id, transferAccountId)
     setPayee('')
     setCategoryId(null)
     setOutflow('')
@@ -48,8 +47,8 @@ export function AddTransactionForm({ file, accountId }: { file: BudgetFile; acco
         }}
       >
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <PayeePicker payees={payees} value={payee} onChange={setPayee} />
-        <CategoryPicker file={file} value={categoryId} onChange={setCategoryId} />
+        <PayeePicker payees={payees} exceptAccountId={accountId} value={payee} onChange={setPayee} />
+        {transferAccountId ? <span className="muted">Transfer</span> : <CategoryPicker file={file} value={categoryId} onChange={setCategoryId} />}
         <input className="amount" placeholder="Outflow" value={outflow} onChange={(e) => setOutflow(e.target.value)} />
         <input className="amount" placeholder="Inflow" value={inflow} onChange={(e) => setInflow(e.target.value)} />
         <button type="submit" disabled={!canSubmit}>

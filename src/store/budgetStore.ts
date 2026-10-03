@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { ensurePaymentCategories } from '../model/creditCards'
 import { deletePayeeRule, setPayeeRule } from '../model/payeeRules'
+import { setTransfer } from '../model/transfers'
 import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type CategoryGroup, type Cents, type MonthKey, type Transaction } from '../model/types'
 import { confirm } from '../components/ConfirmDialog'
 import { ConflictError, type BudgetStorage } from '../storage/storage'
@@ -19,8 +20,11 @@ interface BudgetState {
   setAssigned: (month: MonthKey, categoryId: string, cents: Cents) => void
   /** Shift `cents` of assigned money from one category to another in `month`; null on either side means To budget. */
   moveAssigned: (month: MonthKey, fromId: string | null, toId: string | null, cents: Cents) => void
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void
+  /** Returns the new transaction's id. */
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => string
   updateTransaction: (transactionId: string, patch: Partial<Transaction>) => void
+  /** Make the transaction a transfer to `accountId` (linking or creating its other side), or a plain transaction again with null. */
+  setTransfer: (transactionId: string, accountId: string | null) => void
   deleteTransaction: (transactionId: string) => void
   addCategoryGroup: (name: string) => void
   updateCategoryGroup: (groupId: string, patch: Partial<CategoryGroup>) => void
@@ -75,14 +79,19 @@ export const useBudget = create<BudgetState>((set, get) => ({
       return { ...file, assigned: { ...file.assigned, [month]: assigned } }
     }),
 
-  addTransaction: (transaction) =>
-    get().update((file) => ({ ...file, transactions: [{ ...transaction, id: crypto.randomUUID() }, ...file.transactions] })),
+  addTransaction: (transaction) => {
+    const id = crypto.randomUUID()
+    get().update((file) => ({ ...file, transactions: [{ ...transaction, id }, ...file.transactions] }))
+    return id
+  },
 
   updateTransaction: (transactionId, patch) =>
     get().update((file) => ({
       ...file,
       transactions: file.transactions.map((t) => (t.id === transactionId ? { ...t, ...patch } : t)),
     })),
+
+  setTransfer: (transactionId, accountId) => get().update((file) => setTransfer(file, transactionId, accountId)),
 
   deleteTransaction: (transactionId) =>
     get().update((file) => ({ ...file, transactions: file.transactions.filter((t) => t.id !== transactionId) })),
