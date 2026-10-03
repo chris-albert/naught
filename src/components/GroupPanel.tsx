@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { GroupRow } from '../model/budgetMath'
+import { monthOf } from '../model/dates'
 import { formatCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
 import { trendPath } from '../model/trend'
 import { CREDIT_CARD_PAYMENTS_GROUP, type BudgetFile, type MonthKey } from '../model/types'
 import { useBudget } from '../store/budgetStore'
+import { targetShortfall } from './CategoryPanel'
 import { NameInput } from './NameInput'
+import { PanelTransactions } from './PanelTransactions'
 import { PanelTrend } from './PanelTrend'
 
 const TREND_MONTHS = 6
@@ -45,6 +48,17 @@ export function GroupPanel({
   // The credit card group is managed by the app: no rename, no hiding.
   const managed = group.name === CREDIT_CARD_PAYMENTS_GROUP
   const rows = row.rows.filter((r) => showHidden || !r.category.hidden)
+  // Targets across the group: what the categories need in total, and how far assigned is from it.
+  const targeted = row.rows.filter((r) => r.category.target !== undefined)
+  const targetTotal = targeted.reduce((sum, r) => sum + (r.category.target ?? 0), 0)
+  const toGo = targeted.reduce((sum, r) => sum + targetShortfall(r), 0)
+  const progress = targetTotal ? Math.min(100, Math.round((100 * (targetTotal - toGo)) / targetTotal)) : 0
+  // Same transactions the group's Activity column counts: this month, on-budget accounts, any of its categories.
+  const transactions = useMemo(() => {
+    const onBudget = new Set(file.accounts.filter((a) => a.onBudget).map((a) => a.id))
+    const inGroup = new Set(row.rows.map((r) => r.category.id))
+    return file.transactions.filter((t) => t.categoryId && inGroup.has(t.categoryId) && onBudget.has(t.accountId) && monthOf(t.date) === month)
+  }, [file.transactions, file.accounts, row.rows, month])
   // Same figures as the Reports page: net money out per month, ending at this month.
   const trendMonths = useMemo(() => monthRange(month, TREND_MONTHS), [month])
   const trend = useMemo(() => buildReport(file, trendMonths).groups.find((g) => g.group.id === group.id), [file, trendMonths, group.id])
@@ -99,6 +113,26 @@ export function GroupPanel({
       </section>
 
       <section>
+        <h4>Monthly targets{targeted.length > 0 && ` · ${targeted.length} of ${row.rows.length}`}</h4>
+        {targetTotal === 0 ? (
+          <p className="muted">No category in this group has a target yet.</p>
+        ) : (
+          <>
+            <div className="target-total">
+              <strong>{formatCents(targetTotal)}</strong>
+              <span className="muted">needed each month</span>
+            </div>
+            <div className={`target-bar ${toGo > 0 ? 'under' : ''}`}>
+              <span style={{ width: `${progress}%` }} />
+            </div>
+            <p className={toGo > 0 ? 'warn-text' : 'muted'}>
+              {toGo > 0 ? `${formatCents(toGo)} to go across this group.` : 'Every target in this group is funded.'}
+            </p>
+          </>
+        )}
+      </section>
+
+      <section>
         <h4>Categories{rows.length > 0 && ` · ${rows.length}`}</h4>
         {rows.length === 0 ? (
           <p className="muted">Nothing here yet. Use the + on the group's row to add one.</p>
@@ -128,6 +162,8 @@ export function GroupPanel({
           <PanelTrend report={trend} months={trendMonths} />
         </section>
       )}
+
+      <PanelTransactions file={file} transactions={transactions} showCategory />
 
       {!managed && (
         <section>

@@ -369,6 +369,9 @@ input.target-amount { flex: 1; text-align: right; }
 .target-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.2s ease; }
 .target-bar.under > span { background: var(--warn); }
 .target-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
+.target-total { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
+.target-total strong { font-size: 18px; }
+.target-total .muted { font-size: 12px; }
 .panel-transactions { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
 .panel-transactions li { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
 .panel-transactions li:last-child { border-bottom: none; }
@@ -377,7 +380,8 @@ input.target-amount { flex: 1; text-align: right; }
 .panel-transactions li.head button.link:hover, .panel-transactions li.head button.link.active { color: var(--text); }
 .panel-transactions li.head .sort-arrow { font-size: 8px; margin-left: 4px; vertical-align: 1px; }
 .panel-transactions li .muted { font-size: 12px; }
-.panel-transactions li a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-transactions li .payee { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-transactions li .payee small { font-size: 12px; }
 .panel-transactions li a:hover { color: var(--accent); }
 .panel-categories li { grid-template-columns: 1fr auto auto; }
 .panel-categories li.head span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
