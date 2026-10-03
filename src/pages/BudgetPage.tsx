@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CategoryPanel, targetShortfall } from '../components/CategoryPanel'
+import { GroupPanel } from '../components/GroupPanel'
 import { MoveMoneyPopover, type MoveTarget } from '../components/MoveMoneyPopover'
 import { NameInput } from '../components/NameInput'
 import { computeMonth } from '../model/budgetMath'
@@ -18,7 +19,8 @@ export function BudgetPage() {
   const [showHidden, setShowHidden] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed)
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  /** Row whose detail panel is open: a category or a whole group. */
+  const [selected, setSelected] = useState<{ kind: 'category' | 'group'; id: string } | null>(null)
   /** Group whose "add category" box is open. */
   const [addingIn, setAddingIn] = useState<string | null>(null)
 
@@ -37,7 +39,11 @@ export function BudgetPage() {
 
   const budget = computeMonth(file, month)
   const groups = budget.groups.filter((g) => showHidden || !g.group.hidden)
-  const selected = selectedId ? budget.groups.flatMap((g) => g.rows).find((r) => r.category.id === selectedId) : undefined
+  const selectedGroup = selected?.kind === 'group' ? budget.groups.find((g) => g.group.id === selected.id) : undefined
+  const selectedCategory =
+    selected?.kind === 'category' ? budget.groups.flatMap((g) => g.rows).find((r) => r.category.id === selected.id) : undefined
+  const select = (kind: 'category' | 'group', id: string) =>
+    setSelected(selected?.kind === kind && selected.id === id ? null : { kind, id })
 
   return (
     <>
@@ -77,14 +83,23 @@ export function BudgetPage() {
         {groups.map((g) => (
           <tbody key={g.group.id}>
             <tr
-              className={`group-row ${collapsed.has(g.group.id) ? 'collapsed' : ''}`}
+              className={`group-row ${collapsed.has(g.group.id) ? 'collapsed' : ''} ${selectedGroup?.group.id === g.group.id ? 'selected' : ''}`}
               onClick={(e) => {
+                // The chevron collapses the group; the hover controls rename and add.
                 if ((e.target as HTMLElement).closest('input, button')) return
-                toggleGroup(g.group.id)
+                select('group', g.group.id)
               }}
             >
               <th>
-                <span className="chevron">▾</span> <GroupName group={g.group} onAdd={() => startAdding(g.group.id)} />
+                <button
+                  type="button"
+                  className="chevron"
+                  aria-label={collapsed.has(g.group.id) ? 'Expand group' : 'Collapse group'}
+                  onClick={() => toggleGroup(g.group.id)}
+                >
+                  ▾
+                </button>{' '}
+                <GroupName group={g.group} onAdd={() => startAdding(g.group.id)} />
               </th>
               <th className={`num ${tint(g.assigned)}`}>{formatCents(g.assigned)}</th>
               <th className={`num ${tint(g.activity)}`}>{formatCents(g.activity)}</th>
@@ -96,11 +111,11 @@ export function BudgetPage() {
                 .map((r) => (
                 <tr
                   key={r.category.id}
-                  className={`category-row ${r.category.id === selectedId ? 'selected' : ''}`}
+                  className={`category-row ${selectedCategory?.category.id === r.category.id ? 'selected' : ''}`}
                   onClick={(e) => {
                     // The assigned input and the available pill have their own jobs.
                     if ((e.target as HTMLElement).closest('input, button')) return
-                    setSelectedId(r.category.id === selectedId ? null : r.category.id)
+                    select('category', r.category.id)
                   }}
                 >
                   <td>
@@ -153,8 +168,26 @@ export function BudgetPage() {
         </tbody>
       </table>
       </div>
-      {selected && (
-        <CategoryPanel key={selected.category.id} file={file} month={month} row={selected} toBudget={budget.toBudget} onClose={() => setSelectedId(null)} />
+      {selectedCategory && (
+        <CategoryPanel
+          key={selectedCategory.category.id}
+          file={file}
+          month={month}
+          row={selectedCategory}
+          toBudget={budget.toBudget}
+          onClose={() => setSelected(null)}
+        />
+      )}
+      {selectedGroup && (
+        <GroupPanel
+          key={selectedGroup.group.id}
+          file={file}
+          month={month}
+          row={selectedGroup}
+          showHidden={showHidden}
+          onClose={() => setSelected(null)}
+          onSelectCategory={(id) => setSelected({ kind: 'category', id })}
+        />
       )}
       </div>
       {moveTarget && (

@@ -186,6 +186,10 @@ code { font-size: 0.9em; background: var(--panel-2); padding: 1px 5px; border-ra
 .grid .group-row:hover th { background: color-mix(in srgb, var(--accent-soft) 60%, var(--panel-2)); }
 .grid .group-row .chevron { display: inline-block; color: var(--muted); transition: transform 0.15s ease; width: 12px; }
 .grid .group-row.collapsed .chevron { transform: rotate(-90deg); }
+/* On the budget page the chevron is the collapse control; the rest of the row opens the group panel. */
+.grid .group-row button.chevron { width: 18px; margin-left: -4px; padding: 0; background: none; border: none; border-radius: 4px; box-shadow: none; font: inherit; }
+.grid .group-row button.chevron:hover { filter: none; color: var(--text); background: color-mix(in srgb, var(--accent-soft) 80%, transparent); }
+.grid .group-row.selected th { background: color-mix(in srgb, var(--accent-soft) 70%, var(--panel)); }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; }
 .neg { color: var(--neg); }
 .pos { color: var(--pos); }
@@ -365,6 +369,9 @@ input.target-amount { flex: 1; text-align: right; }
 .target-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width 0.2s ease; }
 .target-bar.under > span { background: var(--warn); }
 .target-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 12px; }
+.target-total { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
+.target-total strong { font-size: 18px; }
+.target-total .muted { font-size: 12px; }
 .panel-transactions { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
 .panel-transactions li { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
 .panel-transactions li:last-child { border-bottom: none; }
@@ -373,8 +380,13 @@ input.target-amount { flex: 1; text-align: right; }
 .panel-transactions li.head button.link:hover, .panel-transactions li.head button.link.active { color: var(--text); }
 .panel-transactions li.head .sort-arrow { font-size: 8px; margin-left: 4px; vertical-align: 1px; }
 .panel-transactions li .muted { font-size: 12px; }
-.panel-transactions li a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-transactions li .payee { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-transactions li .payee small { font-size: 12px; }
 .panel-transactions li a:hover { color: var(--accent); }
+.panel-categories li { grid-template-columns: 1fr auto auto; }
+.panel-categories li.head span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.panel-categories li button.link { padding: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-categories li button.link:hover { color: var(--accent); }
 .slideover h4 button.toggle { display: inline-flex; align-items: center; gap: 6px; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
 .slideover h4 button.toggle:hover { color: var(--text); }
 .slideover h4 button.toggle .chevron { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid currentColor; transform: rotate(-90deg); transition: transform 0.15s ease; }

@@ -5,9 +5,10 @@ import { monthOf } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
 import { trendPath } from '../model/trend'
-import type { BudgetFile, Cents, MonthKey, Transaction } from '../model/types'
+import type { BudgetFile, Cents, MonthKey } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { NameInput } from './NameInput'
+import { PanelTransactions } from './PanelTransactions'
 import { PanelTrend } from './PanelTrend'
 import { Picker } from './Picker'
 
@@ -42,7 +43,6 @@ export function CategoryPanel({
   const [targetText, setTargetText] = useState<string | null>(null)
   const [showOptions, setShowOptions] = useState(false)
   const [renaming, setRenaming] = useState(false)
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'date', dir: -1 })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -60,11 +60,8 @@ export function CategoryPanel({
   // Same transactions the Activity column counts: this month, on-budget accounts.
   const transactions = useMemo(() => {
     const onBudget = new Set(file.accounts.filter((a) => a.onBudget).map((a) => a.id))
-    return file.transactions
-      .filter((t) => t.categoryId === category.id && onBudget.has(t.accountId) && monthOf(t.date) === month)
-      .sort((a, b) => sort.dir * compare(a, b, sort.key) || compare(b, a, 'date'))
-  }, [file.transactions, file.accounts, category.id, month, sort])
-  const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
+    return file.transactions.filter((t) => t.categoryId === category.id && onBudget.has(t.accountId) && monthOf(t.date) === month)
+  }, [file.transactions, file.accounts, category.id, month])
   // Same figures as the Reports page: net money out per month, ending at this month.
   const trendMonths = useMemo(() => monthRange(month, TREND_MONTHS), [month])
   const trend = useMemo(
@@ -187,41 +184,11 @@ export function CategoryPanel({
       {trend && trend.total !== 0 && (
         <section>
           <h4>Last {TREND_MONTHS} months</h4>
-          <PanelTrend report={trend} months={trendMonths} />
+          <PanelTrend report={trend} months={trendMonths} target={target} />
         </section>
       )}
 
-      <section>
-        <h4>Transactions this month{transactions.length > 0 && ` · ${transactions.length}`}</h4>
-        {transactions.length === 0 ? (
-          <p className="muted">Nothing yet.</p>
-        ) : (
-          <ul className="panel-transactions">
-            <li className="head">
-              {SORT_COLUMNS.map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={`link ${key === 'amount' ? 'num' : ''} ${sort.key === key ? 'active' : ''}`}
-                  onClick={() => setSort(sort.key === key ? { key, dir: sort.dir === 1 ? -1 : 1 } : { key, dir: DEFAULT_DIR[key] })}
-                >
-                  {label}
-                  {sort.key === key && <span className="sort-arrow">{sort.dir === 1 ? '▲' : '▼'}</span>}
-                </button>
-              ))}
-            </li>
-            {transactions.map((t) => (
-              <li key={t.id}>
-                <span className="muted">{shortDate(t.date)}</span>
-                <Link to={`/app/accounts/${t.accountId}`} title={accountName.get(t.accountId)}>
-                  {t.payee || 'No payee'}
-                </Link>
-                <span className={`num ${t.amount < 0 ? '' : 'pos'}`}>{formatCents(t.amount)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <PanelTransactions file={file} transactions={transactions} />
 
       <section>
         <h4>
@@ -265,27 +232,4 @@ export function CategoryPanel({
       </section>
     </aside>
   )
-}
-
-type SortKey = 'date' | 'payee' | 'amount'
-
-const SORT_COLUMNS: [SortKey, string][] = [
-  ['date', 'Date'],
-  ['payee', 'Payee'],
-  ['amount', 'Amount'],
-]
-
-/** First click on a column: newest first, A to Z, or biggest spend first. */
-const DEFAULT_DIR: Record<SortKey, 1 | -1> = { date: -1, payee: 1, amount: 1 }
-
-function compare(a: Transaction, b: Transaction, key: SortKey): number {
-  if (key === 'amount') return a.amount - b.amount
-  if (key === 'payee') return a.payee.localeCompare(b.payee, undefined, { sensitivity: 'base' })
-  return a.date < b.date ? -1 : a.date > b.date ? 1 : 0
-}
-
-/** "Sep 14" from an ISO date, without timezone drift. */
-function shortDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
