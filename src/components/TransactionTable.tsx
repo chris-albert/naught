@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatCents } from '../model/money'
 import { categoryForPayee, uncategorizedFrom } from '../model/payeeRules'
 import { INCOME_CATEGORY_ID, type BudgetFile, type Transaction } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { CategoryPicker } from './CategoryPicker'
 import { confirm } from './ConfirmDialog'
-import { PayeePicker } from './PayeePicker'
+import { PayeePicker, usePayeeOptions } from './PayeePicker'
 import type { PickerHandle } from './Picker'
 
 const LIMIT = 500
@@ -28,6 +28,7 @@ export function TransactionTable({
   const updateTransaction = useBudget((s) => s.updateTransaction)
   const deleteTransaction = useBudget((s) => s.deleteTransaction)
   const setPayeeRule = useBudget((s) => s.setPayeeRule)
+  const setTransfer = useBudget((s) => s.setTransfer)
   const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
   const categoryName = (id: string) => (id === INCOME_CATEGORY_ID ? 'Income' : file.categories.find((c) => c.id === id)?.name ?? '?')
   // After a category is picked by hand, offer to make it a rule for that payee.
@@ -55,11 +56,15 @@ export function TransactionTable({
     // The rule answers every pending offer for this payee.
     setSuggestions((m) => new Map([...m].filter(([id, s]) => id !== transactionId && s.payee !== payee)))
   }
-  const payees = useMemo(() => {
-    const names = new Set<string>()
-    for (const t of file.transactions) if (t.payee) names.add(t.payee)
-    return [...names].sort((a, b) => a.localeCompare(b)).map((name) => ({ key: name, label: name }))
-  }, [file.transactions])
+  const { options: payees, transferTo, transferLabel } = usePayeeOptions(file)
+  const setPayee = (t: Transaction, payee: string) => {
+    const accountId = transferTo(payee)
+    if (accountId) setTransfer(t.id, accountId)
+    else {
+      if (t.transferAccountId) setTransfer(t.id, null)
+      updateTransaction(t.id, { payee })
+    }
+  }
 
   const recent = transactions.filter((t) => recentlyCategorized?.has(t.id))
   const uncleared = transactions.filter((t) => !recentlyCategorized?.has(t.id) && t.cleared === 'uncleared')
@@ -184,7 +189,13 @@ export function TransactionTable({
         {showAccount && <td>{accountName.get(t.accountId)}</td>}
         <td>{t.date}</td>
         <td>
-          <PayeePicker ref={selected ? payeeRef : undefined} payees={payees} value={t.payee} onChange={(payee) => updateTransaction(t.id, { payee })} />
+          <PayeePicker
+            ref={selected ? payeeRef : undefined}
+            payees={payees}
+            exceptAccountId={t.accountId}
+            value={t.transferAccountId ? transferLabel(t.transferAccountId) : t.payee}
+            onChange={(payee) => setPayee(t, payee)}
+          />
         </td>
         <td>
           {t.transferAccountId ? (

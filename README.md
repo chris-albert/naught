@@ -27,7 +27,11 @@ Early skeleton. Working today:
   group row shows "Rename" and a "+" that adds a category to it; "+ Add
   group" sits at the bottom of the table. A category is renamed or moved to
   another group from its panel.
-- Account pages with transaction lists; payee and category are editable. An
+- Account pages with transaction lists; payee and category are editable. The
+  payee list starts with "Transfer: <account>" entries; picking one makes the
+  row a transfer, links the matching row on the other account if the bank
+  already sent it (otherwise adds one, which a later sync adopts), and clears
+  the category. A card payment is a transfer to the card. An
   account can carry a link to its bank's site (set under Manage accounts),
   shown in the page header for quick logins.
 - Reconciliation: each synced account shows the bank's balance against the
