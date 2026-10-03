@@ -12,7 +12,6 @@ import { PayeeRulesPage } from './pages/PayeeRulesPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SyncPage } from './pages/SyncPage'
 import { TrendPage } from './pages/TrendPage'
-import { ValidatePage } from './pages/ValidatePage'
 import { WelcomePage, type PendingBudget } from './pages/WelcomePage'
 import { fileStorage, forgetHandle, hasPermission, readHandle, rememberedHandle, requestPermission } from './storage/fileStore'
 import { forgetDriveFile, hasDriveAccess, openDriveBudget, rememberedDriveFile, supportsGoogleDrive } from './storage/googleDrive'
@@ -125,7 +124,6 @@ function BudgetApp() {
           <Route path="sync" element={<SyncPage />} />
           <Route path="settings/accounts" element={<AccountsPage />} />
           <Route path="settings/rules" element={<PayeeRulesPage />} />
-          <Route path="settings/validate" element={<ValidatePage />} />
           <Route path="*" element={<Navigate to="/app/budget" replace />} />
         </Routes>
       </main>
