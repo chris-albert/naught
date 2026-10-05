@@ -5,6 +5,7 @@ import { ReconcilePanel } from '../components/ReconcilePanel'
 import { TransactionTable } from '../components/TransactionTable'
 import { accountBalance } from '../model/budgetMath'
 import { formatCents } from '../model/money'
+import { isUncategorized } from '../model/splits'
 import { useBudget } from '../store/budgetStore'
 
 export function AccountPage() {
@@ -15,13 +16,13 @@ export function AccountPage() {
   const [adding, setAdding] = useState(false)
   const account = id ? file.accounts.find((a) => a.id === id) : undefined
   const inScope = account ? file.transactions.filter((t) => t.accountId === account.id) : file.transactions
-  const uncategorized = inScope.filter((t) => !t.categoryId && !t.transferAccountId)
+  const uncategorized = inScope.filter(isUncategorized)
   // Rows categorized while the filter is on stay visible until the filter is
   // left, so you can see what you just did and the rule prompt has a row to sit under.
   const filterKey = `${account?.id ?? 'all'}:${onlyUncategorized}`
   const [kept, setKept] = useState({ key: filterKey, ids: new Set<string>() })
   if (kept.key !== filterKey) setKept({ key: filterKey, ids: new Set() })
-  const transactions = onlyUncategorized ? inScope.filter((t) => (!t.categoryId && !t.transferAccountId) || kept.ids.has(t.id)) : inScope
+  const transactions = onlyUncategorized ? inScope.filter((t) => isUncategorized(t) || kept.ids.has(t.id)) : inScope
   const base = account ? `/app/accounts/${account.id}` : '/app/accounts'
   const balance = account
     ? accountBalance(file, account.id)

@@ -1,4 +1,5 @@
 import { addMonths, currentMonth, monthOf } from './dates'
+import { linesOf } from './splits'
 import { INCOME_CATEGORY_ID, type BudgetFile, type Category, type CategoryGroup, type Cents, type MonthKey } from './types'
 
 export interface CategoryRow {
@@ -38,6 +39,7 @@ const noActivity = (): Activity => ({ total: 0, credit: 0, byCard: new Map() })
  * Envelope budget for one month, following YNAB's rules.
  *
  * - Only on-budget accounts count.
+ * - Each line of a split transaction counts as a transaction of its own.
  * - available = carried-over available (if positive) + assigned + activity.
  * - Overspending never carries forward. The cash part reduces next month's
  *   "to budget"; the credit part is debt with no envelope behind it.
@@ -77,7 +79,7 @@ export function computeMonth(file: BudgetFile, month: MonthKey, today: MonthKey 
   const cashByMonth = new Map<MonthKey, Cents>()
   let firstMonth = month
 
-  for (const t of file.transactions) {
+  for (const t of file.transactions.flatMap(linesOf)) {
     if (!onBudget.has(t.accountId)) continue
     const m = monthOf(t.date)
     if (m > month) continue

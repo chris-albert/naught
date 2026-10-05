@@ -1,4 +1,5 @@
 import { monthOf } from './dates'
+import { linesOf } from './splits'
 import { INCOME_CATEGORY_ID, type BudgetFile, type Cents, type MonthKey, type Transaction } from './types'
 
 /** What the trend page is looking at: one category group, one category, or one payee. */
@@ -36,7 +37,8 @@ export interface Trend {
  * Month-by-month spending on one group, category or payee, with the same rules as the
  * Reports page: on-budget accounts only, transfers and credit card payment categories
  * ignored, money out positive and net money in negative. A payee's transactions count
- * whatever category they carry, including income and none.
+ * whatever category they carry, including income and none. A split transaction
+ * counts line by line, each line listed as a transaction of its own.
  */
 export function buildTrend(file: BudgetFile, months: MonthKey[], scope: TrendScope): Trend {
   const index = new Map(months.map((m, i) => [m, i]))
@@ -81,7 +83,7 @@ export function buildTrend(file: BudgetFile, months: MonthKey[], scope: TrendSco
 
   const byMonth = months.map(() => 0)
   const transactions: Transaction[] = []
-  for (const t of file.transactions) {
+  for (const t of file.transactions.flatMap(linesOf)) {
     if (!onBudget.has(t.accountId) || t.transferAccountId || !matches(t)) continue
     const i = index.get(monthOf(t.date))
     if (i === undefined) continue

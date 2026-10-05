@@ -1,3 +1,4 @@
+import { isSplit } from './splits'
 import type { Account, BudgetFile, Transaction } from './types'
 
 /**
@@ -32,7 +33,7 @@ export function setTransfer(file: BudgetFile, transactionId: string, accountId: 
 
   // The other side: an unexplained row on the target for the opposite amount, else a new one.
   const other = closest(
-    transactions.filter((x) => x.accountId === target.id && x.amount === -t.amount && !x.categoryId && !x.transferAccountId),
+    transactions.filter((x) => x.accountId === target.id && x.amount === -t.amount && !x.categoryId && !x.transferAccountId && !isSplit(x)),
     t.date,
     MATCH_WINDOW_DAYS,
   )
@@ -50,7 +51,7 @@ export function setTransfer(file: BudgetFile, transactionId: string, accountId: 
         transferAccountId: source.id,
       }
   transactions = transactions.map((x) =>
-    x.id === t.id ? { ...x, payee: transferPayee(target), categoryId: null, transferAccountId: target.id } : x.id === otherSide.id ? otherSide : x,
+    x.id === t.id ? { ...x, payee: transferPayee(target), categoryId: null, splits: undefined, transferAccountId: target.id } : x.id === otherSide.id ? otherSide : x,
   )
   if (!other) transactions = [otherSide, ...transactions]
   return { ...file, transactions }

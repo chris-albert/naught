@@ -1,4 +1,5 @@
 import { addMonths, monthOf } from './dates'
+import { isUncategorized, linesOf } from './splits'
 import { INCOME_CATEGORY_ID, type BudgetFile, type Category, type CategoryGroup, type Cents, type MonthKey } from './types'
 
 export interface MonthSummary {
@@ -71,7 +72,8 @@ export function monthRange(end: MonthKey, count: number): MonthKey[] {
  * them is a "draw" that was already paid for when it was set aside. Credit card
  * payment categories are excluded, and so are transfers between your own
  * accounts even when categorized (moving money to an investment account is not
- * spending, and moving it back is not income).
+ * spending, and moving it back is not income). Each line of a split transaction
+ * counts under its own category.
  *
  * `throughDay` is the day of month the last month runs through (today, when the
  * last month is the current one). Movers compare spending through that day with
@@ -95,18 +97,19 @@ export function buildReport(file: BudgetFile, months: MonthKey[], throughDay = 3
   const incomeCat = months.map(() => 0)
   const uncategorized = months.map(() => 0)
 
-  for (const t of file.transactions) {
-    if (!onBudget.has(t.accountId) || t.transferAccountId) continue
-    const i = index.get(monthOf(t.date))
+  for (const whole of file.transactions) {
+    if (!onBudget.has(whole.accountId) || whole.transferAccountId) continue
+    const i = index.get(monthOf(whole.date))
     if (i === undefined) continue
-    if (t.categoryId === INCOME_CATEGORY_ID) {
-      if (t.payee !== 'Starting Balance') incomeCat[i] += t.amount
-    } else if (t.categoryId && byId.has(t.categoryId)) {
-      if (t.amount < 0) outflow.get(t.categoryId)![i] -= t.amount
-      else inflow.get(t.categoryId)![i] += t.amount
-      if (dayOf(t.date) <= throughDay) soFar.get(t.categoryId)![i] -= t.amount
-    } else if (!t.categoryId && !t.transferAccountId) {
-      uncategorized[i]++
+    if (isUncategorized(whole)) uncategorized[i]++
+    for (const t of linesOf(whole)) {
+      if (t.categoryId === INCOME_CATEGORY_ID) {
+        if (t.payee !== 'Starting Balance') incomeCat[i] += t.amount
+      } else if (t.categoryId && byId.has(t.categoryId)) {
+        if (t.amount < 0) outflow.get(t.categoryId)![i] -= t.amount
+        else inflow.get(t.categoryId)![i] += t.amount
+        if (dayOf(t.date) <= throughDay) soFar.get(t.categoryId)![i] -= t.amount
+      }
     }
   }
 

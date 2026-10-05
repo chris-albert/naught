@@ -4,6 +4,7 @@ import type { CategoryRow } from '../model/budgetMath'
 import { monthOf } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
+import { linesOf } from '../model/splits'
 import { trendPath } from '../model/trend'
 import type { BudgetFile, Cents, MonthKey } from '../model/types'
 import { useBudget } from '../store/budgetStore'
@@ -60,7 +61,7 @@ export function CategoryPanel({
   // Same transactions the Activity column counts: this month, on-budget accounts.
   const transactions = useMemo(() => {
     const onBudget = new Set(file.accounts.filter((a) => a.onBudget).map((a) => a.id))
-    return file.transactions.filter((t) => t.categoryId === category.id && onBudget.has(t.accountId) && monthOf(t.date) === month)
+    return file.transactions.flatMap(linesOf).filter((t) => t.categoryId === category.id && onBudget.has(t.accountId) && monthOf(t.date) === month)
   }, [file.transactions, file.accounts, category.id, month])
   // Same figures as the Reports page: net money out per month, ending at this month.
   const trendMonths = useMemo(() => monthRange(month, TREND_MONTHS), [month])
