@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatCents } from '../model/money'
+import { formatCents, parseCents } from '../model/money'
 import { categoryForPayee, uncategorizedFrom } from '../model/payeeRules'
-import { INCOME_CATEGORY_ID, type BudgetFile, type Transaction } from '../model/types'
+import { isSplit, isUncategorized, unassigned } from '../model/splits'
+import { INCOME_CATEGORY_ID, type BudgetFile, type Cents, type Split, type Transaction } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { CategoryPicker } from './CategoryPicker'
 import { confirm } from './ConfirmDialog'
@@ -55,6 +56,16 @@ export function TransactionTable({
     setPayeeRule(payee, categoryId)
     // The rule answers every pending offer for this payee.
     setSuggestions((m) => new Map([...m].filter(([id, s]) => id !== transactionId && s.payee !== payee)))
+  }
+  /** Replace the split lines; with none left the transaction is a plain one again, in `categoryId`. */
+  const setSplits = (t: Transaction, splits: Split[], categoryId: string | null = null) => {
+    updateTransaction(t.id, splits.length ? { splits, categoryId: null } : { splits: undefined, categoryId })
+    onCategorized?.(t.id)
+    dismiss(t.id)
+  }
+  /** Start with one line holding everything; lowering its amount leaves the rest to hand out. */
+  const startSplit = (t: Transaction) => {
+    if (!t.transferAccountId && !isSplit(t)) setSplits(t, [{ categoryId: t.categoryId, amount: t.amount }])
   }
   const { options: payees, transferTo, transferLabel } = usePayeeOptions(file)
   const setPayee = (t: Transaction, payee: string) => {
@@ -145,6 +156,12 @@ export function TransactionTable({
             payeeRef.current?.open()
           }
           break
+        case 's':
+          if (index >= 0) {
+            e.preventDefault()
+            startSplit(visible[index])
+          }
+          break
         case 'Backspace':
         case 'Delete':
           if (index >= 0) {
@@ -177,13 +194,55 @@ export function TransactionTable({
     )
   }
 
+  const renderSplits = (t: Transaction) => {
+    if (!isSplit(t)) return null
+    const splits = t.splits!
+    const rest = unassigned(t)
+    const lead = showAccount ? 3 : 2
+    return [
+      ...splits.map((s, i) => (
+        <tr key={`${t.id}-split-${i}`} className="split-line">
+          <td colSpan={lead}></td>
+          <td>
+            <CategoryPicker file={file} value={s.categoryId} onChange={(categoryId) => setSplits(t, splits.map((x, j) => (j === i ? { ...x, categoryId } : x)))} />
+          </td>
+          <td className="num">
+            <SplitAmount value={s.amount} sign={t.amount < 0 ? -1 : 1} onChange={(amount) => setSplits(t, splits.map((x, j) => (j === i ? { ...x, amount } : x)))} />
+          </td>
+          <td></td>
+          <td className="row-actions">
+            <button
+              className="link danger"
+              title={splits.length === 1 ? 'Stop splitting' : 'Remove line'}
+              onClick={() => setSplits(t, splits.filter((_, j) => j !== i), s.categoryId)}
+            >
+              ✕
+            </button>
+          </td>
+        </tr>
+      )),
+      rest !== 0 && (
+        <tr key={`${t.id}-split-rest`} className="split-line uncategorized">
+          <td colSpan={lead} className="muted">
+            Left over
+          </td>
+          <td>
+            <CategoryPicker file={file} value={null} onChange={(categoryId) => setSplits(t, [...splits, { categoryId, amount: rest }])} />
+          </td>
+          <td className={`num ${rest < 0 ? 'neg' : 'pos'}`}>{formatCents(rest)}</td>
+          <td colSpan={2}></td>
+        </tr>
+      ),
+    ]
+  }
+
   const renderRow = (t: Transaction) => {
     const selected = t.id === selectedId
     return [
       <tr
         key={t.id}
         data-id={t.id}
-        className={`${!t.categoryId && !t.transferAccountId ? 'uncategorized' : ''} ${selected ? 'selected' : ''}`}
+        className={`${isUncategorized(t) ? 'uncategorized' : ''} ${selected ? 'selected' : ''}`}
         onClick={() => setSelectedId(t.id)}
       >
         {showAccount && <td>{accountName.get(t.accountId)}</td>}
@@ -200,6 +259,8 @@ export function TransactionTable({
         <td>
           {t.transferAccountId ? (
             <span className="muted">Transfer: {accountName.get(t.transferAccountId) ?? '?'}</span>
+          ) : isSplit(t) ? (
+            <span className="muted">Split</span>
           ) : (
             <CategoryPicker
               ref={selected ? categoryRef : undefined}
@@ -212,11 +273,17 @@ export function TransactionTable({
         <td className={`num ${t.amount < 0 ? 'neg' : 'pos'}`}>{formatCents(t.amount)}</td>
         <td className="muted">{t.cleared === 'reconciled' ? '🔒' : t.cleared === 'cleared' ? '✓' : ''}</td>
         <td className="row-actions">
+          {!t.transferAccountId && !isSplit(t) && (
+            <button className="link" title="Split across categories" onClick={() => startSplit(t)}>
+              Split
+            </button>
+          )}
           <button className="link danger" title="Delete transaction" onClick={() => askDelete(t)}>
             ✕
           </button>
         </td>
       </tr>,
+      renderSplits(t),
       renderSuggestion(t),
     ]
   }
@@ -255,8 +322,39 @@ export function TransactionTable({
         </p>
       )}
       <p className="muted hotkeys">
-        <kbd>j</kbd>/<kbd>k</kbd> or arrows move · <kbd>c</kbd> category · <kbd>p</kbd> payee · <kbd>⌫</kbd> delete · <kbd>esc</kbd> deselect
+        <kbd>j</kbd>/<kbd>k</kbd> or arrows move · <kbd>c</kbd> category · <kbd>p</kbd> payee · <kbd>s</kbd> split · <kbd>⌫</kbd> delete · <kbd>esc</kbd> deselect
       </p>
     </>
+  )
+}
+
+/** Amount of one split line. A number typed without a sign takes the direction of the whole transaction. */
+function SplitAmount({ value, sign, onChange }: { value: Cents; sign: 1 | -1; onChange: (cents: Cents) => void }) {
+  const [text, setText] = useState<string | null>(null)
+
+  const commit = () => {
+    if (text !== null) {
+      const typed = parseCents(text)
+      const cents = typed === null ? null : /^\s*[+-]/.test(text) ? typed : sign * Math.abs(typed)
+      if (cents !== null && cents !== value) onChange(cents)
+    }
+    setText(null)
+  }
+
+  return (
+    <input
+      className="assigned"
+      value={text ?? formatCents(value)}
+      onFocus={(e) => e.target.select()}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') {
+          setText(null)
+          e.currentTarget.blur()
+        }
+      }}
+    />
   )
 }

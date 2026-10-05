@@ -4,6 +4,7 @@ import type { GroupRow } from '../model/budgetMath'
 import { monthOf } from '../model/dates'
 import { formatCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
+import { linesOf } from '../model/splits'
 import { trendPath } from '../model/trend'
 import { CREDIT_CARD_PAYMENTS_GROUP, type BudgetFile, type MonthKey } from '../model/types'
 import { useBudget } from '../store/budgetStore'
@@ -57,7 +58,7 @@ export function GroupPanel({
   const transactions = useMemo(() => {
     const onBudget = new Set(file.accounts.filter((a) => a.onBudget).map((a) => a.id))
     const inGroup = new Set(row.rows.map((r) => r.category.id))
-    return file.transactions.filter((t) => t.categoryId && inGroup.has(t.categoryId) && onBudget.has(t.accountId) && monthOf(t.date) === month)
+    return file.transactions.flatMap(linesOf).filter((t) => t.categoryId && inGroup.has(t.categoryId) && onBudget.has(t.accountId) && monthOf(t.date) === month)
   }, [file.transactions, file.accounts, row.rows, month])
   // Same figures as the Reports page: net money out per month, ending at this month.
   const trendMonths = useMemo(() => monthRange(month, TREND_MONTHS), [month])

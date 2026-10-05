@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { accountBalance } from '../model/budgetMath'
 import { reconcile } from '../model/reconcile'
 import { formatCents } from '../model/money'
+import { isUncategorized } from '../model/splits'
 import { saveNow, useBudget, type SaveState } from '../store/budgetStore'
 import { getAccessUrl } from '../simplefin/client'
 import { quickSync } from '../simplefin/quickSync'
@@ -50,7 +51,7 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
   const open = file.accounts.filter((a) => !a.closed)
   const onBudget = open.filter((a) => a.onBudget)
   const offBudget = open.filter((a) => !a.onBudget)
-  const uncategorized = file.transactions.filter((t) => !t.categoryId && !t.transferAccountId).length
+  const uncategorized = file.transactions.filter(isUncategorized).length
   const status = (id: string): 'ok' | 'off' | null => {
     const r = reconcile(file, id)
     return r ? (r.difference === 0 ? 'ok' : 'off') : null

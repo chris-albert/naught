@@ -31,7 +31,10 @@ Early skeleton. Working today:
   payee list starts with "Transfer: <account>" entries; picking one makes the
   row a transfer, links the matching row on the other account if the bank
   already sent it (otherwise adds one, which a later sync adopts), and clears
-  the category. A card payment is a transfer to the card. An
+  the category. A card payment is a transfer to the card. "Split" on a row
+  (or `s`) divides it across categories: lower a line's amount and give the
+  leftover its own category; each line counts under its category in the
+  budget and reports, and any leftover stays uncategorized. An
   account can carry a link to its bank's site (set under Manage accounts),
   shown in the page header for quick logins.
 - Reconciliation: each synced account shows the bank's balance against the

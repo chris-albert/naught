@@ -1,8 +1,9 @@
+import { isSplit } from './splits'
 import type { BudgetFile, Transaction } from './types'
 
 /**
  * Payee rules: "transactions from this payee always get this category".
- * They fill in the category of uncategorized transactions (never transfers)
+ * They fill in the category of uncategorized transactions (never transfers or splits)
  * when a rule is created and when the bank sync inserts new transactions.
  */
 
@@ -10,7 +11,7 @@ export function categoryForPayee(file: BudgetFile, payee: string): string | null
   return file.payeeRules?.[payee] ?? null
 }
 
-const needsCategory = (t: Transaction) => !t.categoryId && !t.transferAccountId
+const needsCategory = (t: Transaction) => !t.categoryId && !t.transferAccountId && !isSplit(t)
 
 /** Transactions a rule for `payee` would categorize right now. */
 export function uncategorizedFrom(file: BudgetFile, payee: string): Transaction[] {

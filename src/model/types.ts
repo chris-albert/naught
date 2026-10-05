@@ -45,6 +45,14 @@ export interface Category {
   target?: Cents
 }
 
+/** One line of a split transaction. */
+export interface Split {
+  /** null while the line still needs a category; INCOME_CATEGORY_ID for income */
+  categoryId: string | null
+  /** Signed like the transaction's amount. */
+  amount: Cents
+}
+
 export type ClearedState = 'uncleared' | 'cleared' | 'reconciled'
 
 export interface Transaction {
@@ -58,6 +66,8 @@ export interface Transaction {
   memo: string
   /** Signed: outflows negative, inflows positive. */
   amount: Cents
+  /** When present, the amount is divided across these lines and `categoryId` is null (see splits.ts). Transfers are never split. */
+  splits?: Split[]
   cleared: ClearedState
   /** Set when this transaction is one side of a transfer. */
   transferAccountId: string | null

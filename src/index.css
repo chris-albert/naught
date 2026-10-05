@@ -306,6 +306,8 @@ button.link.danger { color: var(--neg); }
 .add-transaction input.amount { width: 110px; text-align: right; }
 
 .row-actions { width: 1%; }
+.grid tr.split-line:not(.uncategorized) td { background: var(--panel-2); }
+.grid tr.split-line td:first-child { text-align: right; }
 .row-actions button.link { opacity: 0; padding: 0 6px; }
 .grid tr:hover .row-actions button.link { opacity: 1; }
 

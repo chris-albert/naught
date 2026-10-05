@@ -1,6 +1,7 @@
 import type { Account, AccountType, BudgetFile, Cents, Transaction } from '../model/types'
 import { INCOME_CATEGORY_ID } from '../model/types'
 import { categoryForPayee } from '../model/payeeRules'
+import { isSplit } from '../model/splits'
 import type { SimplefinAccount, SimplefinTransaction } from './client'
 
 /** Bank transaction ids are only unique within an account, so the key includes both. */
@@ -204,7 +205,7 @@ export function mergeSimplefin(
   if (since) {
     const inWindow = (t: Transaction) => !!t.importId && syncedAccountIds.has(t.accountId) && t.date >= since
     const vanished = transactions.filter((t) => t.cleared === 'uncleared' && inWindow(t) && !seen.has(t.importId!))
-    const posted = transactions.filter((t) => t.cleared === 'cleared' && inWindow(t) && seen.has(t.importId!) && !t.categoryId && !t.transferAccountId)
+    const posted = transactions.filter((t) => t.cleared === 'cleared' && inWindow(t) && seen.has(t.importId!) && !t.categoryId && !t.transferAccountId && !isSplit(t))
     const pairs: { pending: Transaction; posted: Transaction; payee: boolean; drift: number; gap: number }[] = []
     for (const pending of vanished) {
       for (const p of posted) {
