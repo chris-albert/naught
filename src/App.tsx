@@ -13,6 +13,7 @@ import { PayeeRulesPage } from './pages/PayeeRulesPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SyncPage } from './pages/SyncPage'
 import { TrendPage } from './pages/TrendPage'
+import { VersionsPage } from './pages/VersionsPage'
 import { WelcomePage, type PendingBudget } from './pages/WelcomePage'
 import { fileStorage, forgetHandle, hasPermission, readHandle, rememberedHandle, requestPermission } from './storage/fileStore'
 import { forgetDriveFile, hasDriveAccess, openDriveBudget, rememberedDriveFile, supportsGoogleDrive } from './storage/googleDrive'
@@ -90,6 +91,23 @@ function BudgetApp() {
     }
   }, [load])
 
+  // Cmd/Ctrl+Z undoes the last change, with Shift (or Ctrl+Y) redoes it. Text fields keep the browser's own undo.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key !== 'z' && key !== 'y') return
+      const target = e.target as HTMLElement | null
+      if (target && (target.closest('input, textarea, select') || target.isContentEditable)) return
+      e.preventDefault()
+      const { undo, redo } = useBudget.getState()
+      if (key === 'y' || e.shiftKey) redo()
+      else undo()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
   // Coming back to the tab: pick up anything saved from another device meanwhile.
   useEffect(() => {
     const check = () => {
@@ -127,6 +145,7 @@ function BudgetApp() {
           <Route path="sync" element={<SyncPage />} />
           <Route path="settings/accounts" element={<AccountsPage />} />
           <Route path="settings/rules" element={<PayeeRulesPage />} />
+          <Route path="settings/versions" element={<VersionsPage />} />
           <Route path="*" element={<Navigate to="/app/budget" replace />} />
         </Routes>
       </main>

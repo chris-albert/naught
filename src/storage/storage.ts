@@ -8,6 +8,22 @@ export interface BudgetStorage {
   write(data: BudgetFile, overwrite?: boolean): Promise<void>
   /** The stored contents if they changed since we last read or wrote them, else null. */
   readIfChanged?(): Promise<BudgetFile | null>
+  /** Earlier saved copies, for storage that keeps them. */
+  versions?: {
+    /** Newest first. */
+    list(): Promise<BudgetVersion[]>
+    read(id: string): Promise<BudgetFile>
+  }
+}
+
+export interface BudgetVersion {
+  id: string
+  /** ISO timestamp of the save. */
+  savedAt: string
+  /** Bytes. */
+  size: number
+  /** Kept past the storage's normal retention. */
+  kept: boolean
 }
 
 export interface OpenedBudget {

@@ -68,6 +68,16 @@ Early skeleton. Working today:
   same Google account connect without a new token; disconnecting on one
   device disconnects them all.
 
+- Undo and redo: every change made in the current tab can be undone with
+  Cmd/Ctrl+Z (Shift to redo, or the buttons at the bottom of the sidebar),
+  including bank imports and version restores. The history lives in memory
+  and is dropped when the file is reloaded or closed.
+- Version history (Google Drive budgets only): Settings → Version history
+  lists Drive's revisions of the file, shows what any of them held, and
+  restores one as a new save (itself undoable). Drive keeps every revision
+  for 30 days or until there are 100, so the app also marks the first save
+  of each day `keepForever` and keeps the latest 60 of those. A file in a
+  synced folder has no history in the app; use the provider's own.
 - Payee rules: after you pick a category for a transaction, the row offers to
   always use that category for the payee. Saying yes categorizes the other
   uncategorized transactions from that payee and future bank imports. Rules
