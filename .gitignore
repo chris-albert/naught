@@ -1,6 +1,8 @@
 node_modules
 dist
 *.local
+.dev.vars
+.wrangler
 .DS_Store
 
 # personal financial data - never commit

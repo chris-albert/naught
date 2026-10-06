@@ -13,6 +13,7 @@ import {
   listDriveBudgets,
   loadGoogleSignIn,
   openDriveBudget,
+  signOutOfDrive,
   supportsGoogleDrive,
   type DriveFile,
 } from '../storage/googleDrive'
@@ -183,6 +184,21 @@ export function WelcomePage({ pending, onPendingDone }: { pending: PendingBudget
                   }}
                 />
               </label>
+              <p className="muted small">
+                This browser stays signed in until you{' '}
+                <button
+                  className="link"
+                  onClick={() =>
+                    run(async () => {
+                      await signOutOfDrive()
+                      setDriveFiles(null)
+                    })
+                  }
+                >
+                  sign out of Google
+                </button>
+                .
+              </p>
             </>
           )}
         </section>

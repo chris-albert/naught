@@ -17,9 +17,10 @@ function fakeDrive(initial = emptyBudget('remote')) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: string, init: RequestInit = {}) => {
+      const json = (body: unknown) => new Response(JSON.stringify(body))
+      if (input === '/auth/refresh') return json({ access_token: 'fresh', expires_in: 3600 })
       const url = new URL(input)
       drive.auth.push(new Headers(init.headers).get('Authorization'))
-      const json = (body: unknown) => new Response(JSON.stringify(body))
       if (init.method === 'PATCH') {
         drive.content = init.body as string
         drive.md5 = `v${++drive.uploads + 1}`
@@ -97,6 +98,18 @@ describe('google drive storage', () => {
     expect(JSON.parse(drive.content).name).toBe('Home')
     await storage.write(emptyBudget('Home 2'))
     expect(JSON.parse(drive.content).name).toBe('Home 2')
+  })
+
+  it('renews an expired token through the refresh cookie, without a popup', async () => {
+    const drive = fakeDrive()
+    vi.setSystemTime(Date.now() + 2 * 3_600_000)
+    try {
+      expect(await listDriveBudgets()).toEqual([file])
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(fetch).toHaveBeenCalledWith('/auth/refresh', { method: 'POST' })
+    expect(drive.auth).toEqual(['Bearer fresh'])
   })
 
   it('reports a failed request', async () => {
