@@ -87,6 +87,8 @@ export function createLinkedAccount(sfin: SimplefinAccount, type: AccountType, o
  *    stopped sending -> adopt it (set importId, mark cleared if posted).
  * 3. Otherwise insert it as a new transaction, categorized by payee rule if one matches.
  *
+ * Bank transactions whose id is in `file.ignoredImportIds` (rows the user deleted) are skipped.
+ *
  * Accounts listed in `newAccountIds` get a "Starting Balance" transaction so their
  * balance equals the bank's, since the bank only sends a window of history.
  */
@@ -100,6 +102,7 @@ export function mergeSimplefin(
   const byImportId = new Map<string, Transaction>()
   for (const t of transactions) if (t.importId) byImportId.set(t.importId, t)
   const seen = new Set<string>()
+  const ignored = new Set(file.ignoredImportIds)
   const addedIds = new Set<string>()
   const syncedAccountIds = new Set<string>()
 
@@ -111,6 +114,7 @@ export function mergeSimplefin(
     const ordered = [...sfin.transactions].sort((a, b) => Number(!!a.pending) - Number(!!b.pending))
     for (const bt of ordered) {
       const importId = importIdFor(sfin.id, bt.id)
+      if (ignored.has(importId)) continue
       seen.add(importId)
       const date = epochToIsoDate(bt.posted || bt.transacted_at || 0)
       const amount = parseDecimal(bt.amount)

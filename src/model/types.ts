@@ -96,6 +96,8 @@ export interface BudgetFile {
   simplefinLastSync?: string
   /** payeeRules[payee] = category to give uncategorized transactions from that payee. */
   payeeRules?: Record<string, string>
+  /** Import ids of bank transactions the user deleted; sync does not bring them back. */
+  ignoredImportIds?: string[]
 }
 
 export function emptyBudget(name: string): BudgetFile {
