@@ -4,6 +4,7 @@ import { CategoryTrend } from '../components/CategoryTrend'
 import { CumulativeLine } from '../components/CumulativeLine'
 import { Info } from '../components/Info'
 import { MonthlyBars } from '../components/MonthlyBars'
+import { ReportsNav } from '../components/ReportsNav'
 import { currentMonth, formatMonth } from '../model/dates'
 import { formatCents } from '../model/money'
 import { buildReport, monthRange, type CategoryReport, type GroupReport, type MonthSummary } from '../model/reports'
@@ -42,6 +43,7 @@ export function ReportsPage() {
     <>
       <header className="page-header">
         <h2>Reports</h2>
+        <ReportsNav />
         <div className="segmented">
           {RANGES.map((n) => (
             <button key={n} className={count === n ? 'on' : ''} onClick={() => setCount(n)}>
