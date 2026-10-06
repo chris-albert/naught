@@ -30,9 +30,8 @@ interface Token {
   expiresAt: number
 }
 
-interface TokenResponse {
-  access_token?: string
-  expires_in?: number
+interface CodeResponse {
+  code?: string
   error?: string
   error_description?: string
 }
@@ -40,12 +39,13 @@ interface TokenResponse {
 declare const google: {
   accounts: {
     oauth2: {
-      initTokenClient(config: {
+      initCodeClient(config: {
         client_id: string
         scope: string
-        callback: (response: TokenResponse) => void
+        ux_mode: 'popup'
+        callback: (response: CodeResponse) => void
         error_callback: (error: { type: string; message?: string }) => void
-      }): { requestAccessToken(overrides?: { prompt?: string }): void }
+      }): { requestCode(): void }
     }
   }
 }
@@ -69,16 +69,32 @@ export function loadGoogleSignIn(): Promise<void> {
   }))
 }
 
-/** Opens Google's popup; it closes by itself when the user has already granted access. */
-async function requestToken(): Promise<Token> {
+/**
+ * The sign-in routes in functions/auth. They hold the refresh token in a cookie
+ * the page cannot read and hand out access tokens, which last about an hour.
+ */
+const auth = (action: 'exchange' | 'refresh' | 'signout', body?: unknown) =>
+  fetch(`/auth/${action}`, {
+    method: 'POST',
+    ...(body !== undefined && { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  })
+
+async function tokenFrom(res: Response): Promise<Token> {
+  const r = (await res.json()) as { access_token: string; expires_in: number }
+  return { value: r.access_token, expiresAt: Date.now() + r.expires_in * 1000 }
+}
+
+/** Opens Google's popup for a one-time code, which the server trades for tokens. */
+async function signIn(): Promise<Token> {
   await loadGoogleSignIn()
-  return new Promise((resolve, reject) => {
+  const code = await new Promise<string>((resolve, reject) => {
     google.accounts.oauth2
-      .initTokenClient({
+      .initCodeClient({
         client_id: CLIENT_ID!,
         scope: SCOPE,
+        ux_mode: 'popup',
         callback: (r) => {
-          if (r.access_token) resolve({ value: r.access_token, expiresAt: Date.now() + (r.expires_in ?? 0) * 1000 })
+          if (r.code) resolve(r.code)
           else reject(new Error(`Google sign-in failed: ${r.error_description ?? r.error ?? 'unknown error'}`))
         },
         error_callback: (e) =>
@@ -90,28 +106,52 @@ async function requestToken(): Promise<Token> {
             ),
           ),
       })
-      .requestAccessToken({ prompt: '' })
+      .requestCode()
   })
+  const res = await auth('exchange', { code })
+  if (!res.ok) throw new Error(`Google sign-in failed: ${((await res.json().catch(() => ({}))) as { error?: string }).error ?? res.status}`)
+  return tokenFrom(res)
 }
 
-// Browser-only sign-in gets a token that lasts about an hour and cannot be refreshed silently.
+/** A new token from the refresh cookie; undefined when there is none or Google no longer accepts it. */
+async function refresh(): Promise<Token | undefined> {
+  const res = await auth('refresh')
+  if (res.status === 401) return undefined
+  if (!res.ok) throw new Error(`Google sign-in could not be renewed (${res.status})`)
+  return tokenFrom(res)
+}
+
 let token: Token | undefined
 
 const usable = (t: Token | undefined): t is Token => !!t && t.expiresAt > Date.now() + 60_000
 
-async function accessToken(): Promise<string> {
+/** The cached token, renewed through the refresh cookie once it expires; undefined when the user has to sign in again. */
+async function silentToken(): Promise<Token | undefined> {
   token ??= await get<Token>(TOKEN_KEY)
   if (!usable(token)) {
-    token = await requestToken()
-    await set(TOKEN_KEY, token)
+    token = await refresh()
+    if (token) await set(TOKEN_KEY, token)
   }
-  return token.value
+  return token
+}
+
+async function accessToken(): Promise<string> {
+  let t = await silentToken()
+  if (!t) {
+    t = token = await signIn()
+    await set(TOKEN_KEY, t)
+  }
+  return t.value
 }
 
 /** Whether Drive can be used right now without asking the user to sign in again. */
-export async function hasDriveAccess(): Promise<boolean> {
-  token ??= await get<Token>(TOKEN_KEY)
-  return usable(token)
+export const hasDriveAccess = async () => !!(await silentToken())
+
+/** Revokes the sign-in with Google, so this browser cannot reach Drive until the user signs in again. */
+export async function signOutOfDrive(): Promise<void> {
+  token = undefined
+  await del(TOKEN_KEY)
+  await auth('signout')
 }
 
 async function api(url: string, init: RequestInit = {}): Promise<Response> {
