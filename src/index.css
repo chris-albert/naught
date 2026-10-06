@@ -238,6 +238,14 @@ input.assigned:focus { border-color: var(--accent); background: var(--panel); bo
 .steps ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.5; }
 .landing-footer { margin-top: 56px; text-align: center; border-top: 1px solid var(--border); padding-top: 20px; }
 .landing-footer a { color: var(--accent); }
+.legal { max-width: 680px; margin: 40px auto 0; line-height: 1.6; }
+.legal h1 { font-size: 32px; margin: 0 0 4px; letter-spacing: -0.02em; }
+.legal h2 { font-size: 20px; margin: 32px 0 8px; }
+.legal p, .legal li { font-size: 15px; }
+.legal ul { padding-left: 22px; }
+.legal li { margin: 6px 0; }
+.legal a { color: var(--accent); }
+.legal code { font-size: 13px; }
 @media (max-width: 600px) {
   .landing { padding: 16px 16px 40px; }
   .hero { padding: 48px 0 32px; }

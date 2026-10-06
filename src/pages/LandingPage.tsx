@@ -90,7 +90,8 @@ export function LandingPage() {
           Other browsers get an in-memory mode plus a backup download.
         </p>
         <p className="muted small">
-          <a href={REPO}>Source and issues on GitHub.</a>
+          <Link to="/privacy">Privacy policy</Link> · <Link to="/terms">Terms of service</Link> ·{' '}
+          <a href={REPO}>Source and issues on GitHub</a>
         </p>
       </footer>
     </div>
