@@ -41,7 +41,9 @@ Early skeleton. Working today:
   the issuer reports to the credit bureaus). For the four days before a
   card closes, the budget page shows a notice with what it owes, what its
   payment category has set aside, and the bank link, so it can be paid
-  down before the balance is reported.
+  down before the balance is reported. Dismissing the notice hides that
+  card until its next closing; the dismissal lives in the browser, not
+  the file.
 - Reconciliation: each synced account shows the bank's balance against the
   sum of cleared transactions, lists uncleared and unconfirmed entries that
   explain any gap, and can lock cleared transactions (booking an adjustment
