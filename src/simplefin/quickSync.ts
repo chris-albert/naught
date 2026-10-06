@@ -24,6 +24,6 @@ export async function quickSync(days = 30): Promise<SyncStats> {
     )
     stats = merged.stats
     return merged.file
-  })
+  }, 'bank sync')
   return stats!
 }

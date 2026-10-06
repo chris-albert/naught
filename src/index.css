@@ -128,6 +128,11 @@ code { font-size: 0.9em; background: var(--panel-2); padding: 1px 5px; border-ra
 }
 .account-link { display: flex !important; justify-content: space-between; gap: 8px; }
 .account-link .num { color: var(--sidebar-muted); font-variant-numeric: tabular-nums; font-size: 13px; }
+.history-row { margin-top: auto; display: flex; gap: 2px; font-size: 12px; }
+.history-row button.link { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 5px 8px; }
+.history-row button.link:disabled { opacity: 0.4; cursor: default; }
+.history-row button.link:disabled:hover { background: none; }
+.history-row + .save-state, .history-row + .demo-note { margin-top: 0; }
 .save-state { margin-top: auto; padding: 10px; font-size: 12px; color: var(--sidebar-muted); display: flex; align-items: center; gap: 8px; }
 .save-state::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--sidebar-muted); }
 .save-clean::before { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }

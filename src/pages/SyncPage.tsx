@@ -106,7 +106,7 @@ export function SyncPage() {
       const merged = mergeSimplefin({ ...current, accounts }, fetched.filter((s) => linkedIds.has(s.id)), { newAccountIds: newIds, since })
       setStats(merged.stats)
       return merged.file
-    })
+    }, 'bank import')
   }
 
   const unlinkedAccounts = (sfinId: string) =>

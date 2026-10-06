@@ -25,7 +25,7 @@ export function ImportPage() {
       confirmLabel: 'Convert',
     })
     if (ok) {
-      update((current) => convertHoldingCategory(current, holding))
+      update((current) => convertHoldingCategory(current, holding), 'convert to income')
       setHolding(null)
     }
   }
@@ -35,7 +35,7 @@ export function ImportPage() {
     setError(null)
     try {
       const imported = importYnab(JSON.parse(await f.text()))
-      update((current) => ({ ...imported, name: current.name || imported.name }))
+      update((current) => ({ ...imported, name: current.name || imported.name }), 'import')
       navigate('/app/budget')
     } catch (e) {
       setError((e as Error).message)

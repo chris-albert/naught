@@ -8,15 +8,30 @@ import { ConflictError, type BudgetStorage } from '../storage/storage'
 
 export type SaveState = 'clean' | 'dirty' | 'saving' | 'error' | 'no-file'
 
+/** A budget as it was before (in `past`) or after (in `future`) the change `label` describes. */
+export interface HistoryEntry {
+  file: BudgetFile
+  label: string
+}
+
+const HISTORY_LIMIT = 100
+
 interface BudgetState {
   file: BudgetFile | null
   storage: BudgetStorage | null
   saveState: SaveState
   /** Sample data opened from the landing page; never saved anywhere. */
   demo: boolean
+  /** Changes made in this session that can be undone, oldest first. */
+  past: HistoryEntry[]
+  /** Changes undone in this session that can be redone, oldest first. */
+  future: HistoryEntry[]
   load: (file: BudgetFile, storage: BudgetStorage | null, demo?: boolean) => void
   close: () => void
-  update: (fn: (file: BudgetFile) => BudgetFile) => void
+  /** Apply `fn` to the budget; `label` names the change in the undo menu. */
+  update: (fn: (file: BudgetFile) => BudgetFile, label?: string) => void
+  undo: () => void
+  redo: () => void
   setAssigned: (month: MonthKey, categoryId: string, cents: Cents) => void
   /** Shift `cents` of assigned money from one category to another in `month`; null on either side means To budget. */
   moveAssigned: (month: MonthKey, fromId: string | null, toId: string | null, cents: Cents) => void
@@ -49,19 +64,39 @@ export const useBudget = create<BudgetState>((set, get) => ({
   storage: null,
   saveState: 'no-file',
   demo: false,
+  past: [],
+  future: [],
 
   load: (file, storage, demo = false) => {
     const ensured = ensurePaymentCategories(file)
-    set({ file: ensured, storage, demo, saveState: storage ? (ensured === file ? 'clean' : 'dirty') : 'no-file' })
+    set({ file: ensured, storage, demo, past: [], future: [], saveState: storage ? (ensured === file ? 'clean' : 'dirty') : 'no-file' })
     if (ensured !== file) scheduleSave()
   },
 
-  close: () => set({ file: null, storage: null, demo: false, saveState: 'no-file' }),
+  close: () => set({ file: null, storage: null, demo: false, past: [], future: [], saveState: 'no-file' }),
 
-  update: (fn) => {
-    const { file, storage } = get()
+  update: (fn, label = 'change') => {
+    const { file, storage, past } = get()
     if (!file) return
-    set({ file: ensurePaymentCategories(fn(file)), saveState: storage ? 'dirty' : 'no-file' })
+    const next = ensurePaymentCategories(fn(file))
+    if (next === file) return
+    set({ file: next, past: [...past.slice(-(HISTORY_LIMIT - 1)), { file, label }], future: [], saveState: storage ? 'dirty' : 'no-file' })
+    scheduleSave()
+  },
+
+  undo: () => {
+    const { file, storage, past, future } = get()
+    const entry = past[past.length - 1]
+    if (!file || !entry) return
+    set({ file: entry.file, past: past.slice(0, -1), future: [...future, { file, label: entry.label }], saveState: storage ? 'dirty' : 'no-file' })
+    scheduleSave()
+  },
+
+  redo: () => {
+    const { file, storage, past, future } = get()
+    const entry = future[future.length - 1]
+    if (!file || !entry) return
+    set({ file: entry.file, future: future.slice(0, -1), past: [...past, { file, label: entry.label }], saveState: storage ? 'dirty' : 'no-file' })
     scheduleSave()
   },
 
@@ -69,7 +104,7 @@ export const useBudget = create<BudgetState>((set, get) => ({
     get().update((file) => ({
       ...file,
       assigned: { ...file.assigned, [month]: { ...(file.assigned[month] ?? {}), [categoryId]: cents } },
-    })),
+    }), 'assign'),
 
   moveAssigned: (month, fromId, toId, cents) =>
     get().update((file) => {
@@ -77,11 +112,11 @@ export const useBudget = create<BudgetState>((set, get) => ({
       if (fromId) assigned[fromId] = (assigned[fromId] ?? 0) - cents
       if (toId) assigned[toId] = (assigned[toId] ?? 0) + cents
       return { ...file, assigned: { ...file.assigned, [month]: assigned } }
-    }),
+    }, 'move money'),
 
   addTransaction: (transaction) => {
     const id = crypto.randomUUID()
-    get().update((file) => ({ ...file, transactions: [{ ...transaction, id }, ...file.transactions] }))
+    get().update((file) => ({ ...file, transactions: [{ ...transaction, id }, ...file.transactions] }), 'add transaction')
     return id
   },
 
@@ -89,9 +124,9 @@ export const useBudget = create<BudgetState>((set, get) => ({
     get().update((file) => ({
       ...file,
       transactions: file.transactions.map((t) => (t.id === transactionId ? { ...t, ...patch } : t)),
-    })),
+    }), 'edit transaction'),
 
-  setTransfer: (transactionId, accountId) => get().update((file) => setTransfer(file, transactionId, accountId)),
+  setTransfer: (transactionId, accountId) => get().update((file) => setTransfer(file, transactionId, accountId), 'transfer'),
 
   deleteTransaction: (transactionId) =>
     get().update((file) => {
@@ -103,38 +138,38 @@ export const useBudget = create<BudgetState>((set, get) => ({
           ? { ignoredImportIds: [...(file.ignoredImportIds ?? []), importId] }
           : {}),
       }
-    }),
+    }, 'delete transaction'),
 
   addCategoryGroup: (name) =>
-    get().update((file) => ({ ...file, categoryGroups: [...file.categoryGroups, { id: crypto.randomUUID(), name, hidden: false }] })),
+    get().update((file) => ({ ...file, categoryGroups: [...file.categoryGroups, { id: crypto.randomUUID(), name, hidden: false }] }), 'add group'),
 
   updateCategoryGroup: (groupId, patch) =>
     get().update((file) => ({
       ...file,
       categoryGroups: file.categoryGroups.map((g) => (g.id === groupId ? { ...g, ...patch } : g)),
-    })),
+    }), 'edit group'),
 
   addCategory: (groupId, name) =>
-    get().update((file) => ({ ...file, categories: [...file.categories, { id: crypto.randomUUID(), groupId, name, hidden: false }] })),
+    get().update((file) => ({ ...file, categories: [...file.categories, { id: crypto.randomUUID(), groupId, name, hidden: false }] }), 'add category'),
 
   updateCategory: (categoryId, patch) =>
     get().update((file) => ({
       ...file,
       categories: file.categories.map((c) => (c.id === categoryId ? { ...c, ...patch } : c)),
-    })),
+    }), 'edit category'),
 
-  setPayeeRule: (payee, categoryId) => get().update((file) => setPayeeRule(file, payee, categoryId)),
+  setPayeeRule: (payee, categoryId) => get().update((file) => setPayeeRule(file, payee, categoryId), 'payee rule'),
 
-  deletePayeeRule: (payee) => get().update((file) => deletePayeeRule(file, payee)),
+  deletePayeeRule: (payee) => get().update((file) => deletePayeeRule(file, payee), 'delete payee rule'),
 
   addAccount: (account) =>
-    get().update((file) => ({ ...file, accounts: [...file.accounts, { ...account, id: crypto.randomUUID() }] })),
+    get().update((file) => ({ ...file, accounts: [...file.accounts, { ...account, id: crypto.randomUUID() }] }), 'add account'),
 
   updateAccount: (accountId, patch) =>
     get().update((file) => ({
       ...file,
       accounts: file.accounts.map((a) => (a.id === accountId ? { ...a, ...patch } : a)),
-    })),
+    }), 'edit account'),
 
   moveAccount: (accountId, direction) =>
     get().update((file) => {
@@ -147,7 +182,7 @@ export const useBudget = create<BudgetState>((set, get) => ({
       if (j < 0 || j >= accounts.length) return file
       ;[accounts[i], accounts[j]] = [accounts[j], accounts[i]]
       return { ...file, accounts }
-    }),
+    }, 'reorder accounts'),
 
   reconcileAccount: (accountId, adjustment, date) =>
     get().update((file) => {
@@ -168,7 +203,7 @@ export const useBudget = create<BudgetState>((set, get) => ({
         })
       }
       return { ...file, transactions }
-    }),
+    }, 'reconcile'),
 
   deleteAccount: (accountId) =>
     get().update((file) => ({
@@ -177,7 +212,7 @@ export const useBudget = create<BudgetState>((set, get) => ({
       transactions: file.transactions
         .filter((t) => t.accountId !== accountId)
         .map((t) => (t.transferAccountId === accountId ? { ...t, transferAccountId: null } : t)),
-    })),
+    }), 'delete account'),
 }))
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined

@@ -1,6 +1,6 @@
 import { del, get, set } from 'idb-keyval'
 import type { BudgetFile } from '../model/types'
-import { ConflictError, parseBudgetFile, type BudgetStorage, type OpenedBudget } from './storage'
+import { ConflictError, parseBudgetFile, type BudgetStorage, type BudgetVersion, type OpenedBudget } from './storage'
 
 /**
  * Budget files in the user's own Google Drive, reached straight from the
@@ -16,6 +16,16 @@ const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files'
 
 const TOKEN_KEY = 'naught.drive.token'
 const FILE_KEY = 'naught.drive.file'
+/** Per file: the local date we last marked a revision to keep. */
+const KEPT_KEY = 'naught.drive.kept.'
+
+/**
+ * Drive keeps a file's revisions for 30 days or until there are 100 of them,
+ * whichever comes first, and autosave burns through 100 quickly. So the first
+ * save of each day is marked `keepForever`, and only the newest KEEP_DAYS of
+ * those stay marked (Drive allows 200, and each costs the file's size in quota).
+ */
+const KEEP_DAYS = 60
 
 export const supportsGoogleDrive = !!CLIENT_ID
 
@@ -176,29 +186,78 @@ async function read(id: string): Promise<{ data: BudgetFile; md5: string }> {
   return { data: parseBudgetFile(await res.text()), md5 }
 }
 
-async function upload(id: string, data: BudgetFile): Promise<string> {
-  const res = await api(`${UPLOAD}/${id}?uploadType=media&fields=md5Checksum`, {
+async function upload(id: string, data: BudgetFile): Promise<{ md5: string; revisionId: string }> {
+  const res = await api(`${UPLOAD}/${id}?uploadType=media&fields=md5Checksum,headRevisionId`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   })
-  return ((await res.json()) as { md5Checksum: string }).md5Checksum
+  const meta = (await res.json()) as { md5Checksum: string; headRevisionId: string }
+  return { md5: meta.md5Checksum, revisionId: meta.headRevisionId }
+}
+
+interface Revision {
+  id: string
+  modifiedTime: string
+  size?: string
+  keepForever?: boolean
+}
+
+async function listRevisions(fileId: string): Promise<BudgetVersion[]> {
+  const params = new URLSearchParams({ fields: 'revisions(id,modifiedTime,size,keepForever)', pageSize: '1000' })
+  const res = await api(`${FILES}/${fileId}/revisions?${params}`)
+  const { revisions } = (await res.json()) as { revisions?: Revision[] }
+  return (revisions ?? [])
+    .map((r) => ({ id: r.id, savedAt: r.modifiedTime, size: Number(r.size ?? 0), kept: !!r.keepForever }))
+    .sort((a, b) => b.savedAt.localeCompare(a.savedAt))
+}
+
+async function readRevision(fileId: string, revisionId: string): Promise<BudgetFile> {
+  const res = await api(`${FILES}/${fileId}/revisions/${revisionId}?alt=media`)
+  return parseBudgetFile(await res.text())
+}
+
+const setKeepForever = (fileId: string, revisionId: string, keepForever: boolean) =>
+  api(`${FILES}/${fileId}/revisions/${revisionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keepForever }),
+  })
+
+const localDate = () => new Date().toLocaleDateString('sv') // YYYY-MM-DD
+
+/** Keep today's first saved revision (see KEEP_DAYS); let the oldest kept ones go once there are too many. */
+async function keepDaily(fileId: string, revisionId: string): Promise<void> {
+  const today = localDate()
+  if ((await get<string>(KEPT_KEY + fileId)) === today) return
+  await setKeepForever(fileId, revisionId, true)
+  await set(KEPT_KEY + fileId, today)
+  const kept = (await listRevisions(fileId)).filter((v) => v.kept)
+  for (const v of kept.slice(KEEP_DAYS)) await setKeepForever(fileId, v.id, false)
 }
 
 function driveStorage(file: DriveFile, md5: string): BudgetStorage {
   // Checksum of the contents we last read or wrote. Anything else on Drive means another device saved.
   let known = md5
+  // Daily keeping runs after the save returns, one at a time so two saves never both pick today's revision.
+  let keeping = Promise.resolve()
   return {
     name: file.name,
     async write(data, overwrite = false) {
       if (!overwrite && (await checksum(file.id)) !== known) throw new ConflictError()
-      known = await upload(file.id, data)
+      const saved = await upload(file.id, data)
+      known = saved.md5
+      keeping = keeping.then(() => keepDaily(file.id, saved.revisionId)).catch((e) => console.warn('could not keep a daily revision', e))
     },
     async readIfChanged() {
       if ((await checksum(file.id)) === known) return null
       const theirs = await read(file.id)
       known = theirs.md5
       return theirs.data
+    },
+    versions: {
+      list: () => listRevisions(file.id),
+      read: (id) => readRevision(file.id, id),
     },
   }
 }
@@ -223,7 +282,7 @@ export async function createDriveBudget(data: BudgetFile): Promise<BudgetStorage
     body: JSON.stringify({ name: `${data.name || 'budget'}.naught.json`, mimeType: 'application/json' }),
   })
   const file = (await res.json()) as DriveFile
-  const md5 = await upload(file.id, data)
+  const { md5 } = await upload(file.id, data)
   await set(FILE_KEY, { id: file.id, name: file.name })
   return driveStorage(file, md5)
 }

@@ -10,6 +10,8 @@ import { quickSync } from '../simplefin/quickSync'
 import { downloadBackup } from '../storage/fileStore'
 import { getTheme, nextTheme, setTheme } from '../theme'
 
+const shortcut = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
+
 const saveLabels: Record<SaveState, string> = {
   clean: 'Saved',
   dirty: 'Unsaved changes',
@@ -23,6 +25,11 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
   const saveState = useBudget((s) => s.saveState)
   const demo = useBudget((s) => s.demo)
   const close = useBudget((s) => s.close)
+  const hasVersions = useBudget((s) => !!s.storage?.versions)
+  const past = useBudget((s) => s.past)
+  const future = useBudget((s) => s.future)
+  const undo = useBudget((s) => s.undo)
+  const redo = useBudget((s) => s.redo)
   const [theme, setThemeState] = useState(getTheme)
   const [connected, setConnected] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -88,6 +95,7 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
       <h2>Settings</h2>
       <NavLink to="/app/settings/accounts">Manage accounts</NavLink>
       <NavLink to="/app/settings/rules">Payee rules</NavLink>
+      {hasVersions && <NavLink to="/app/settings/versions">Version history</NavLink>}
       <div className="nav-with-action">
         <NavLink to="/app/sync">Bank sync</NavLink>
         <button
@@ -117,6 +125,15 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
       <button className="link" onClick={close}>
         {demo ? 'Leave demo' : 'Close file'}
       </button>
+
+      <div className="history-row">
+        <button className="link" disabled={past.length === 0} onClick={undo} title={`Undo (${shortcut}Z)`}>
+          ↶ Undo{past.length > 0 && ` ${past[past.length - 1].label}`}
+        </button>
+        <button className="link" disabled={future.length === 0} onClick={redo} title={`Redo (${shortcut}⇧Z)`}>
+          ↷ Redo
+        </button>
+      </div>
 
       {demo ? (
         <div className="demo-note">
