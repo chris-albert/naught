@@ -58,6 +58,16 @@ Early skeleton. Working today:
   group, category or payee opens a drill-down page (from the arrow on its
   report row, or "Spending over time" in the category panel) with its monthly
   bars, a breakdown by category or payee, and the transactions behind them.
+  Tabs above the overview open more views: This month (the month's figures
+  against last month and the average, the pace living spending is on, budget
+  vs actual, usual spending not seen yet, largest transactions), Trends
+  (savings rate by month, smoothed spending, which categories are rising or
+  falling, the same month last year, plan vs actual by month), Insights
+  (recurring payees and subscriptions with price changes, targets vs reality,
+  top payees, reserve health), Net worth (every account's month-end balance,
+  off-budget included) and Year in review. These views start their range at
+  the first month with data, so a young budget is not averaged over empty
+  months.
 - SimpleFIN bank sync: paste a setup token, fetch, link bank accounts to
   budget accounts (or create them), import. Pending transactions are skipped
   (banks change their id and amount when they post). Posted ones are

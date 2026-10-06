@@ -27,3 +27,9 @@ export function formatMonth(month: MonthKey): string {
     timeZone: 'UTC',
   })
 }
+
+/** "Sep 26" style label for a column header. */
+export function shortMonth(month: MonthKey): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+}

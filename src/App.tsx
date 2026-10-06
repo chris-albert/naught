@@ -7,14 +7,19 @@ import { AccountPage } from './pages/AccountPage'
 import { AccountsPage } from './pages/AccountsPage'
 import { BudgetPage } from './pages/BudgetPage'
 import { ImportPage } from './pages/ImportPage'
+import { InsightsPage } from './pages/InsightsPage'
 import { LandingPage } from './pages/LandingPage'
+import { MonthReviewPage } from './pages/MonthReviewPage'
+import { NetWorthPage } from './pages/NetWorthPage'
 import { PrivacyPage, TermsPage } from './pages/LegalPages'
 import { PayeeRulesPage } from './pages/PayeeRulesPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SyncPage } from './pages/SyncPage'
 import { TrendPage } from './pages/TrendPage'
+import { TrendsPage } from './pages/TrendsPage'
 import { VersionsPage } from './pages/VersionsPage'
 import { WelcomePage, type PendingBudget } from './pages/WelcomePage'
+import { YearReviewPage } from './pages/YearReviewPage'
 import { fileStorage, forgetHandle, hasPermission, readHandle, rememberedHandle, requestPermission } from './storage/fileStore'
 import { forgetDriveFile, hasDriveAccess, openDriveBudget, rememberedDriveFile, supportsGoogleDrive } from './storage/googleDrive'
 import { reloadIfChanged, useBudget } from './store/budgetStore'
@@ -139,6 +144,13 @@ function BudgetApp() {
           <Route path="budget/:month" element={<BudgetPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="reports/trend" element={<TrendPage />} />
+          <Route path="reports/month" element={<MonthReviewPage />} />
+          <Route path="reports/month/:month" element={<MonthReviewPage />} />
+          <Route path="reports/trends" element={<TrendsPage />} />
+          <Route path="reports/insights" element={<InsightsPage />} />
+          <Route path="reports/net-worth" element={<NetWorthPage />} />
+          <Route path="reports/year" element={<YearReviewPage />} />
+          <Route path="reports/year/:year" element={<YearReviewPage />} />
           <Route path="accounts" element={<AccountPage />} />
           <Route path="accounts/:id" element={<AccountPage />} />
           <Route path="import" element={<ImportPage />} />
