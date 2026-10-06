@@ -192,6 +192,26 @@ describe('mergeSimplefin', () => {
     expect(file.transactions).toHaveLength(3)
   })
 
+  it('does not re-import bank transactions the user deleted', () => {
+    const existing = fileWith()
+    existing.ignoredImportIds = ['sfin:sf-1:hold']
+    const { file, stats } = mergeSimplefin(
+      existing,
+      [
+        bank({
+          transactions: [
+            { id: 'hold', posted: 0, transacted_at: day('2026-09-01'), amount: '-1.00', description: 'AUTH HOLD', pending: true },
+            { id: 'new', posted: day('2026-09-08'), amount: '-99.00', description: 'unrelated' },
+          ],
+        }),
+      ],
+      { since: '2026-08-20', now },
+    )
+    expect(stats).toMatchObject({ added: 1, matched: 0, removed: 0 })
+    expect(file.transactions.map((t) => t.importId)).toEqual(['sfin:sf-1:new'])
+    expect(file.ignoredImportIds).toEqual(['sfin:sf-1:hold'])
+  })
+
   describe('pending rows that post for a different amount', () => {
     const pendingRow = (p: Partial<Transaction> = {}) =>
       txn({ id: 'held', date: '2026-09-06', amount: -2500, importId: 'sfin:sf-1:old', importPayee: 'CAFE ROMA', cleared: 'uncleared', categoryId: 'dining', ...p })

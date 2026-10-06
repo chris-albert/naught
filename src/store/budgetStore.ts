@@ -94,7 +94,16 @@ export const useBudget = create<BudgetState>((set, get) => ({
   setTransfer: (transactionId, accountId) => get().update((file) => setTransfer(file, transactionId, accountId)),
 
   deleteTransaction: (transactionId) =>
-    get().update((file) => ({ ...file, transactions: file.transactions.filter((t) => t.id !== transactionId) })),
+    get().update((file) => {
+      const importId = file.transactions.find((t) => t.id === transactionId)?.importId
+      return {
+        ...file,
+        transactions: file.transactions.filter((t) => t.id !== transactionId),
+        ...(importId && !file.ignoredImportIds?.includes(importId)
+          ? { ignoredImportIds: [...(file.ignoredImportIds ?? []), importId] }
+          : {}),
+      }
+    }),
 
   addCategoryGroup: (name) =>
     get().update((file) => ({ ...file, categoryGroups: [...file.categoryGroups, { id: crypto.randomUUID(), name, hidden: false }] })),
