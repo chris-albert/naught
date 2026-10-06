@@ -38,7 +38,10 @@ Early skeleton. Working today:
   account can carry a link to its bank's site (set under Manage accounts),
   shown in the page header for quick logins. A credit card can also record
   the day of the month its statement closes (the balance that day is what
-  the issuer reports to the credit bureaus).
+  the issuer reports to the credit bureaus). For the four days before a
+  card closes, the budget page shows a notice with what it owes, what its
+  payment category has set aside, and the bank link, so it can be paid
+  down before the balance is reported.
 - Reconciliation: each synced account shows the bank's balance against the
   sum of cleared transactions, lists uncleared and unconfirmed entries that
   explain any gap, and can lock cleared transactions (booking an adjustment
