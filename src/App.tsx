@@ -8,6 +8,7 @@ import { AccountsPage } from './pages/AccountsPage'
 import { BudgetPage } from './pages/BudgetPage'
 import { ImportPage } from './pages/ImportPage'
 import { LandingPage } from './pages/LandingPage'
+import { PrivacyPage, TermsPage } from './pages/LegalPages'
 import { PayeeRulesPage } from './pages/PayeeRulesPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SyncPage } from './pages/SyncPage'
@@ -22,6 +23,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/demo" element={<DemoPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route path="/app/*" element={<BudgetApp />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
