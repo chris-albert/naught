@@ -36,7 +36,9 @@ Early skeleton. Working today:
   leftover its own category; each line counts under its category in the
   budget and reports, and any leftover stays uncategorized. An
   account can carry a link to its bank's site (set under Manage accounts),
-  shown in the page header for quick logins.
+  shown in the page header for quick logins. A credit card can also record
+  the day of the month its statement closes (the balance that day is what
+  the issuer reports to the credit bureaus).
 - Reconciliation: each synced account shows the bank's balance against the
   sum of cleared transactions, lists uncleared and unconfirmed entries that
   explain any gap, and can lock cleared transactions (booking an adjustment

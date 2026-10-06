@@ -304,6 +304,7 @@ input.assigned:focus { border-color: var(--accent); background: var(--panel); bo
 /* ---------- manage accounts ---------- */
 input.inline { border-color: transparent; background: transparent; padding: 2px 8px; min-width: 180px; }
 input.inline:hover { border-color: var(--border); background: var(--panel-2); }
+input.inline.day { min-width: 0; width: 64px; }
 .actions { text-align: right; white-space: nowrap; }
 .actions button.link { display: inline; }
 button.link.danger { color: var(--neg); }

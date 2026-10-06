@@ -26,6 +26,8 @@ export interface Account {
   paymentCategoryId?: string
   /** The bank's website, shown as a link on the account page. */
   bankUrl?: string
+  /** For credit accounts: day of the month (1–31) the statement closes, which is when the balance is reported to the credit bureaus. */
+  statementDay?: number
 }
 
 export interface CategoryGroup {

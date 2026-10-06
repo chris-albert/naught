@@ -87,6 +87,25 @@ function AccountList() {
           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
         />
       </td>
+      <td>
+        {a.type === 'credit' && (
+          <input
+            className="inline day"
+            type="number"
+            min={1}
+            max={31}
+            placeholder="day"
+            defaultValue={a.statementDay ?? ''}
+            onBlur={(e) => {
+              const n = Math.round(Number(e.target.value))
+              const statementDay = n >= 1 && n <= 31 ? n : undefined
+              if (statementDay !== a.statementDay) updateAccount(a.id, { statementDay })
+              else e.target.value = a.statementDay?.toString() ?? ''
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        )}
+      </td>
       <td className="num">{formatCents(balance(a.id))}</td>
       <td className="actions">
         <button className="link" title="Move up" onClick={() => moveAccount(a.id, -1)}>
@@ -112,20 +131,21 @@ function AccountList() {
           <th>Name</th>
           <th>Type</th>
           <th>Bank link</th>
+          <th title="Day of the month the card's statement closes; the balance that day is what gets reported to the credit bureaus.">Statement closes</th>
           <th className="num">Balance</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <tr className="section-row">
-          <th colSpan={5}>Open · {open.length}</th>
+          <th colSpan={6}>Open · {open.length}</th>
         </tr>
         {open.map(renderRow)}
       </tbody>
       {closed.length > 0 && (
         <tbody>
           <tr className="section-row">
-            <th colSpan={5}>Closed · {closed.length}</th>
+            <th colSpan={6}>Closed · {closed.length}</th>
           </tr>
           {closed.map(renderRow)}
         </tbody>
