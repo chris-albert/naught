@@ -415,6 +415,7 @@ input.assigned:focus { border-color: var(--accent); background: var(--panel); bo
 /* ---------- manage accounts ---------- */
 input.inline { border-color: transparent; background: transparent; padding: 2px 8px; min-width: 180px; }
 input.inline:hover { border-color: var(--border); background: var(--panel-2); }
+input.inline.day { min-width: 0; width: 64px; }
 .actions { text-align: right; white-space: nowrap; }
 .actions button.link { display: inline; }
 button.link.danger { color: var(--neg); }
@@ -441,6 +442,10 @@ dialog.confirm::backdrop { background: rgba(10, 14, 20, 0.5); backdrop-filter: b
 /* ---------- category panel (budget page) ---------- */
 .budget-body { display: flex; gap: 16px; overflow: hidden; padding-bottom: 0; }
 .budget-table { flex: 1; min-width: 0; overflow: auto; padding-bottom: 48px; }
+.closings { display: flex; flex-direction: column; gap: 4px; margin: 0 0 12px; padding: 10px 14px; font-size: 13px; background: var(--warn-soft); border: 1px solid var(--warn); border-radius: 10px; }
+.closings a { color: inherit; }
+.closings .short { color: var(--neg); }
+.closings .bank-link { margin-left: 10px; font-size: 12px; }
 .grid tbody tr.category-row { cursor: pointer; }
 .grid tbody tr.selected { background: color-mix(in srgb, var(--accent-soft) 70%, var(--panel)); box-shadow: inset 3px 0 0 var(--accent); }
 .grid tbody tr.selected td { background: transparent; }

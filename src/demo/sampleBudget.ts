@@ -149,8 +149,11 @@ export function sampleBudget(today = new Date().toISOString().slice(0, 10)): Bud
   transactions.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
 
   // Pretend the bank agrees with everything that has cleared, so reconciliation shows green.
+  // The card closes in two days so the budget page shows the pay-before-close notice.
+  const closesIn = (days: number) => new Date(Date.parse(today) + days * 86400000).getUTCDate()
   const accounts = [checking, savings, visa].map((a) => ({
     ...a,
+    ...(a === visa ? { statementDay: closesIn(2) } : {}),
     bankBalance: transactions.filter((t) => t.accountId === a.id && t.cleared !== 'uncleared').reduce((sum, t) => sum + t.amount, 0),
     bankBalanceDate: today,
   }))

@@ -8,6 +8,11 @@ export function currentMonth(): MonthKey {
   return new Date().toISOString().slice(0, 7)
 }
 
+/** Today as an ISO date, YYYY-MM-DD. */
+export function currentDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export function addMonths(month: MonthKey, delta: number): MonthKey {
   const [y, m] = month.split('-').map(Number)
   const d = new Date(Date.UTC(y, m - 1 + delta, 1))

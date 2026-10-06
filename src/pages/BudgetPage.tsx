@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { CardClosings } from '../components/CardClosings'
 import { CategoryPanel, targetShortfall } from '../components/CategoryPanel'
 import { GroupPanel } from '../components/GroupPanel'
 import { MoveMoneyPopover, type MoveTarget } from '../components/MoveMoneyPopover'
@@ -71,6 +72,7 @@ export function BudgetPage() {
       </header>
       <div className="page-body budget-body">
       <div className="budget-table">
+      <CardClosings file={file} />
       <table className="grid budget">
         <thead>
           <tr>
