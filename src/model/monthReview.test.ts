@@ -66,7 +66,16 @@ describe('buildMonthReview', () => {
   it('projects the month by adding what usually gets spent after today', () => {
     const r = buildMonthReview(withHistory(fixture()), '2026-04', '2026-04-10')
     // rent: always in by the 10th, nothing left; food: 50000 a month, 20000 by the 10th, so 30000 still to come
-    expect(r.pace).toEqual({ livingSoFar: 25000, projected: 55000, averageMonth: 200000, daysLeft: 20 })
+    expect(r.pace).toMatchObject({ livingSoFar: 25000, projected: 55000, averageMonth: 200000, daysLeft: 20 })
+  })
+
+  it('breaks the pace down by group and category, leaving out reserve and payment categories', () => {
+    const r = buildMonthReview(withHistory(fixture()), '2026-04', '2026-04-10')
+    expect(r.pace!.groups.map((g) => [g.group.id, g.soFar, g.projected, g.averageMonth])).toEqual([['g1', 25000, 55000, 200000]])
+    expect(r.pace!.groups[0].categories.map((c) => [c.category.id, c.soFar, c.projected, c.averageMonth])).toEqual([
+      ['food', 25000, 55000, 50000],
+      ['rent', 0, 0, 150000],
+    ])
   })
 
   it('reads a past month in full with no pace', () => {
@@ -123,7 +132,7 @@ describe('buildMonthReview', () => {
     expect(r.comparedMonths).toBe(0)
     expect(r.income).toEqual({ value: 0, vsPrev: 0, vsAverage: 0 })
     expect(r.savingsRate).toEqual({ value: null, vsPrev: null, vsAverage: null })
-    expect(r.pace).toEqual({ livingSoFar: 0, projected: 0, averageMonth: 0, daysLeft: 20 })
+    expect(r.pace).toEqual({ livingSoFar: 0, projected: 0, averageMonth: 0, daysLeft: 20, groups: [] })
     expect(r.budget).toEqual({ assigned: 0, spent: 0, overspent: [] })
   })
 })
