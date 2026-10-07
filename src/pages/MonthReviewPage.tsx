@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ReportsNav } from '../components/ReportsNav'
 import { currentDate, currentMonth, addMonths, formatMonth, shortMonth } from '../model/dates'
 import { formatCents } from '../model/money'
-import { buildMonthReview, type Headline, type RateHeadline } from '../model/monthReview'
+import { buildMonthReview, type Headline, type Pace, type PaceFigures, type RateHeadline } from '../model/monthReview'
 import { trendPath } from '../model/trend'
-import { INCOME_CATEGORY_ID, type Cents } from '../model/types'
+import { INCOME_CATEGORY_ID } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 
 /** One month in review: headline numbers against last month and the average, where the month is heading, and what stands out. */
@@ -166,9 +166,19 @@ export function MonthReviewPage() {
   )
 }
 
-function PaceCard({ pace, throughDay }: { pace: { livingSoFar: Cents; projected: Cents; averageMonth: Cents; daysLeft: number }; throughDay: number }) {
+function PaceCard({ pace, throughDay }: { pace: Pace; throughDay: number }) {
+  const [byGroup, setByGroup] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
+  const toggleGroup = (id: string) => {
+    const next = new Set(openGroups)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setOpenGroups(next)
+  }
   const scale = Math.max(1, pace.projected, pace.averageMonth)
   const over = pace.averageMonth > 0 && pace.projected > pace.averageMonth
+  // One scale for every row so the bars compare across groups and categories.
+  const rowScale = Math.max(1, ...pace.groups.flatMap((g) => [g.projected, g.averageMonth]))
   return (
     <section className="card">
       <h3>Pace</h3>
@@ -181,11 +191,7 @@ function PaceCard({ pace, throughDay }: { pace: { livingSoFar: Cents; projected:
         )}
         . {pace.daysLeft} {pace.daysLeft === 1 ? 'day' : 'days'} left.
       </p>
-      <div className="pace-bar" title={`${formatCents(pace.livingSoFar)} spent so far`}>
-        <div className="pace-spent" style={{ width: `${(100 * pace.livingSoFar) / scale}%` }} />
-        <div className={`pace-projected ${over ? 'over' : ''}`} style={{ width: `${(100 * pace.projected) / scale}%` }} />
-        {pace.averageMonth > 0 && <div className="pace-average" style={{ left: `${(100 * pace.averageMonth) / scale}%` }} />}
-      </div>
+      <PaceBar figures={{ soFar: pace.livingSoFar, projected: pace.projected, averageMonth: pace.averageMonth }} scale={scale} />
       <div className="pace-legend chart-legend">
         <span>
           <i className="swatch pace-swatch-spent" /> Spent so far {formatCents(pace.livingSoFar)}
@@ -203,7 +209,73 @@ function PaceCard({ pace, throughDay }: { pace: { livingSoFar: Cents; projected:
         The projection adds what each category usually spends after the {ordinal(throughDay)} in earlier months, so a rent payment on the 1st does not get
         counted twice and a bill due later is not missed.
       </p>
+      {pace.groups.length > 0 && (
+        <>
+          <button type="button" className={`link toggle pace-toggle ${byGroup ? 'open' : ''}`} onClick={() => setByGroup(!byGroup)}>
+            <span className="chevron" /> By group
+          </button>
+          {byGroup && (
+            <table className="grid review-table pace-table">
+              <thead>
+                <tr>
+                  <th>Group</th>
+                  <th />
+                  <th className="num">So far</th>
+                  <th className="num">Projected</th>
+                  <th className="num">Average</th>
+                </tr>
+              </thead>
+              {pace.groups.map((g) => (
+                <tbody key={g.group.id}>
+                  <tr className={`group-row ${openGroups.has(g.group.id) ? '' : 'collapsed'}`} onClick={() => toggleGroup(g.group.id)}>
+                    <th>
+                      <span className="chevron">▾</span> {g.group.name}
+                    </th>
+                    <PaceCells figures={g} scale={rowScale} header />
+                  </tr>
+                  {openGroups.has(g.group.id) &&
+                    g.categories.map((c) => (
+                      <tr key={c.category.id}>
+                        <td className="pace-category">
+                          <Link to={trendPath({ kind: 'category', id: c.category.id })}>{c.category.name}</Link>
+                        </td>
+                        <PaceCells figures={c} scale={rowScale} />
+                      </tr>
+                    ))}
+                </tbody>
+              ))}
+            </table>
+          )}
+        </>
+      )}
     </section>
+  )
+}
+
+/** The bar and three figures of one row; group rows are header cells like the other grids. */
+function PaceCells({ figures, scale, header = false }: { figures: PaceFigures; scale: number; header?: boolean }) {
+  const over = figures.averageMonth > 0 && figures.projected > figures.averageMonth
+  const Cell = header ? 'th' : 'td'
+  return (
+    <Fragment>
+      <Cell className="pace-cell">
+        <PaceBar figures={figures} scale={scale} />
+      </Cell>
+      <Cell className="num">{formatCents(figures.soFar)}</Cell>
+      <Cell className={`num ${over ? 'neg' : ''}`}>{formatCents(figures.projected)}</Cell>
+      <Cell className="num muted">{formatCents(figures.averageMonth)}</Cell>
+    </Fragment>
+  )
+}
+
+function PaceBar({ figures, scale }: { figures: PaceFigures; scale: number }) {
+  const over = figures.averageMonth > 0 && figures.projected > figures.averageMonth
+  return (
+    <div className="pace-bar" title={`${formatCents(figures.soFar)} spent so far`}>
+      <div className="pace-spent" style={{ width: `${(100 * figures.soFar) / scale}%` }} />
+      <div className={`pace-projected ${over ? 'over' : ''}`} style={{ width: `${(100 * figures.projected) / scale}%` }} />
+      {figures.averageMonth > 0 && <div className="pace-average" style={{ left: `${(100 * figures.averageMonth) / scale}%` }} />}
+    </div>
   )
 }
 

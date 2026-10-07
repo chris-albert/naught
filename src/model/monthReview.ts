@@ -2,7 +2,7 @@ import { computeMonth } from './budgetMath'
 import { addMonths, monthOf } from './dates'
 import { avg, countedLines, dayOf, daysInMonth, spendingCategories, sum } from './ledger'
 import { buildReport, monthRange, type MonthSummary } from './reports'
-import type { BudgetFile, Category, Cents, MonthKey, Transaction } from './types'
+import type { BudgetFile, Category, CategoryGroup, Cents, MonthKey, Transaction } from './types'
 
 /** A figure for the month with how it compares to the month before and to the average of the earlier months. */
 export interface Headline {
@@ -25,6 +25,23 @@ export interface Pace {
   /** Average full-month living spending over the earlier months with data. */
   averageMonth: Cents
   daysLeft: number
+  /** The same three figures per group and category, in budget order; groups and categories with nothing in any of them are left out. */
+  groups: PaceGroup[]
+}
+
+export interface PaceFigures {
+  soFar: Cents
+  projected: Cents
+  averageMonth: Cents
+}
+
+export interface PaceCategory extends PaceFigures {
+  category: Category
+}
+
+export interface PaceGroup extends PaceFigures {
+  group: CategoryGroup
+  categories: PaceCategory[]
 }
 
 export interface BudgetRow {
@@ -121,17 +138,38 @@ export function buildMonthReview(file: BudgetFile, month: MonthKey, today: strin
 
   let pace: Pace | null = null
   if (current) {
-    let remainder = 0
-    for (const c of living) {
-      const avgFull = avg(earlierIndexes.map((i) => fullBy.get(c.id)![i]))
-      const avgThrough = avg(earlierIndexes.map((i) => throughBy.get(c.id)![i]))
-      remainder += Math.max(0, avgFull - avgThrough)
+    // Per category, the same way the summaries count living: a month's net inflow counts as income, not negative spending.
+    const figures = (c: Category): PaceCategory => {
+      const full = fullBy.get(c.id)!
+      const through = throughBy.get(c.id)!
+      const avgFull = avg(earlierIndexes.map((i) => full[i]))
+      const avgThrough = avg(earlierIndexes.map((i) => through[i]))
+      const soFar = Math.max(0, through[lastIndex])
+      return {
+        category: c,
+        soFar,
+        projected: soFar + Math.max(0, avgFull - avgThrough),
+        averageMonth: avg(earlierIndexes.map((i) => Math.max(0, full[i]))),
+      }
+    }
+    const groups: PaceGroup[] = []
+    for (const g of file.categoryGroups) {
+      const rows = living.filter((c) => c.groupId === g.id).map(figures).filter((r) => r.soFar || r.projected || r.averageMonth)
+      if (!rows.length) continue
+      groups.push({
+        group: g,
+        soFar: sum(rows.map((r) => r.soFar)),
+        projected: sum(rows.map((r) => r.projected)),
+        averageMonth: sum(rows.map((r) => r.averageMonth)),
+        categories: rows,
+      })
     }
     pace = {
       livingSoFar: last.living,
-      projected: last.living + remainder,
+      projected: sum(groups.map((g) => g.projected)),
       averageMonth: avg(earlier.map((s) => s.living)),
       daysLeft: daysInMonth(month) - throughDay,
+      groups,
     }
   }
 
