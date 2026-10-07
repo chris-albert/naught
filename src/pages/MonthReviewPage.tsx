@@ -191,10 +191,21 @@ function PaceCard({ pace, throughDay }: { pace: Pace; throughDay: number }) {
         )}
         . {pace.daysLeft} {pace.daysLeft === 1 ? 'day' : 'days'} left.
       </p>
-      <PaceBar figures={{ soFar: pace.livingSoFar, projected: pace.projected, averageMonth: pace.averageMonth }} scale={scale} />
+      <p className="pace-detail">
+        Spent <strong>{formatCents(pace.soFar)}</strong> so far
+        {pace.usualByNow > 0 && (
+          <>
+            , <Versus value={pace.soFar} usual={pace.usualByNow} /> the usual {formatCents(pace.usualByNow)} by the {ordinal(throughDay)}
+          </>
+        )}
+        . At this rate the month comes to <strong>{formatCents(pace.runRate)}</strong>. The budget has{' '}
+        <strong className={pace.available < 0 ? 'neg' : 'pos'}>{formatCents(pace.available)}</strong> left
+        {pace.daysLeft > 0 && pace.available > 0 && <>, {formatCents(perDay(pace.available, pace.daysLeft))} a day</>}.
+      </p>
+      <PaceBar figures={pace} scale={scale} />
       <div className="pace-legend chart-legend">
         <span>
-          <i className="swatch pace-swatch-spent" /> Spent so far {formatCents(pace.livingSoFar)}
+          <i className="swatch pace-swatch-spent" /> Spent so far {formatCents(pace.soFar)}
         </span>
         <span>
           <i className="swatch pace-swatch-projected" /> Projected
@@ -215,14 +226,19 @@ function PaceCard({ pace, throughDay }: { pace: Pace; throughDay: number }) {
             <span className="chevron" /> By group
           </button>
           {byGroup && (
+            <div className="pace-scroll">
             <table className="grid review-table pace-table">
               <thead>
                 <tr>
                   <th>Group</th>
                   <th />
                   <th className="num">So far</th>
+                  <th className="num">Usual</th>
+                  <th className="num">Run rate</th>
                   <th className="num">Projected</th>
                   <th className="num">Average</th>
+                  <th className="num">Left</th>
+                  <th className="num">Per day</th>
                 </tr>
               </thead>
               {pace.groups.map((g) => (
@@ -231,7 +247,7 @@ function PaceCard({ pace, throughDay }: { pace: Pace; throughDay: number }) {
                     <th>
                       <span className="chevron">▾</span> {g.group.name}
                     </th>
-                    <PaceCells figures={g} scale={rowScale} header />
+                    <PaceCells figures={g} scale={rowScale} daysLeft={pace.daysLeft} header />
                   </tr>
                   {openGroups.has(g.group.id) &&
                     g.categories.map((c) => (
@@ -239,12 +255,13 @@ function PaceCard({ pace, throughDay }: { pace: Pace; throughDay: number }) {
                         <td className="pace-category">
                           <Link to={trendPath({ kind: 'category', id: c.category.id })}>{c.category.name}</Link>
                         </td>
-                        <PaceCells figures={c} scale={rowScale} />
+                        <PaceCells figures={c} scale={rowScale} daysLeft={pace.daysLeft} />
                       </tr>
                     ))}
                 </tbody>
               ))}
             </table>
+            </div>
           )}
         </>
       )}
@@ -252,8 +269,8 @@ function PaceCard({ pace, throughDay }: { pace: Pace; throughDay: number }) {
   )
 }
 
-/** The bar and three figures of one row; group rows are header cells like the other grids. */
-function PaceCells({ figures, scale, header = false }: { figures: PaceFigures; scale: number; header?: boolean }) {
+/** The bar and figures of one row; group rows are header cells like the other grids. */
+function PaceCells({ figures, scale, daysLeft, header = false }: { figures: PaceFigures; scale: number; daysLeft: number; header?: boolean }) {
   const over = figures.averageMonth > 0 && figures.projected > figures.averageMonth
   const Cell = header ? 'th' : 'td'
   return (
@@ -262,11 +279,36 @@ function PaceCells({ figures, scale, header = false }: { figures: PaceFigures; s
         <PaceBar figures={figures} scale={scale} />
       </Cell>
       <Cell className="num">{formatCents(figures.soFar)}</Cell>
+      <Cell className="num">
+        {figures.usualByNow > 0 ? (
+          <>
+            <Versus value={figures.soFar} usual={figures.usualByNow} /> {formatCents(figures.usualByNow)}
+          </>
+        ) : (
+          <span className="muted">–</span>
+        )}
+      </Cell>
+      <Cell className="num">{formatCents(figures.runRate)}</Cell>
       <Cell className={`num ${over ? 'neg' : ''}`}>{formatCents(figures.projected)}</Cell>
       <Cell className="num muted">{formatCents(figures.averageMonth)}</Cell>
+      <Cell className={`num ${figures.available < 0 ? 'neg' : ''}`}>{formatCents(figures.available)}</Cell>
+      <Cell className="num muted">{daysLeft > 0 && figures.available > 0 ? formatCents(perDay(figures.available, daysLeft)) : '–'}</Cell>
     </Fragment>
   )
 }
+
+/** An arrow for spending so far against what is usual by now: down and green when under, up and red when over. */
+function Versus({ value, usual }: { value: number; usual: number }) {
+  const diff = value - usual
+  if (diff === 0) return <span className="muted">=</span>
+  return (
+    <span className={diff < 0 ? 'soft-pos' : 'soft-neg'} title={`${formatCents(Math.abs(diff))} ${diff < 0 ? 'under' : 'over'} usual`}>
+      {arrow(diff)}
+    </span>
+  )
+}
+
+const perDay = (available: number, daysLeft: number) => Math.floor(available / daysLeft)
 
 function PaceBar({ figures, scale }: { figures: PaceFigures; scale: number }) {
   const over = figures.averageMonth > 0 && figures.projected > figures.averageMonth
