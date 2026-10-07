@@ -775,8 +775,11 @@ kbd { font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--
 .pace-toggle:hover { color: var(--text); }
 .pace-toggle .chevron { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid currentColor; transform: rotate(-90deg); transition: transform 0.15s ease; }
 .pace-toggle.open .chevron { transform: none; }
-.pace-table { margin-top: 10px; }
-.pace-table .pace-cell { width: 40%; min-width: 140px; }
+.pace-detail { margin: 0 0 10px; font-size: 13px; }
+.pace-detail strong { font-variant-numeric: tabular-nums; }
+.pace-scroll { margin-top: 10px; overflow-x: auto; }
+.pace-table { margin-top: 0; }
+.pace-table .pace-cell { width: 100%; min-width: 80px; }
 .pace-table .pace-bar { height: 8px; }
 .pace-table .pace-average { top: -3px; bottom: -3px; }
 .pace-table .pace-category { padding-left: 32px; }

@@ -18,21 +18,24 @@ export interface RateHeadline {
   vsAverage: number | null
 }
 
-export interface Pace {
-  livingSoFar: Cents
-  /** What the month is heading for: spent so far plus what usually gets spent after this day of the month. */
-  projected: Cents
-  /** Average full-month living spending over the earlier months with data. */
-  averageMonth: Cents
+export interface Pace extends PaceFigures {
   daysLeft: number
-  /** The same three figures per group and category, in budget order; groups and categories with nothing in any of them are left out. */
+  /** The same figures per group and category, in budget order; groups and categories with no spending, past or expected, are left out. */
   groups: PaceGroup[]
 }
 
 export interface PaceFigures {
   soFar: Cents
+  /** Average spending through this day of the month over the earlier months. */
+  usualByNow: Cents
+  /** Spending so far scaled to the full month, as if it carried on at the same daily rate. */
+  runRate: Cents
+  /** What the month is heading for: spent so far plus what usually gets spent after this day of the month. */
   projected: Cents
+  /** Average full-month spending over the earlier months with data. */
   averageMonth: Cents
+  /** What the budget still has for the month: carried over plus assigned, less the month's activity. */
+  available: Cents
 }
 
 export interface PaceCategory extends PaceFigures {
@@ -136,8 +139,12 @@ export function buildMonthReview(file: BudgetFile, month: MonthKey, today: strin
   const lastIndex = months.length - 1
   const earlierIndexes = months.map((_, i) => i).filter((i) => earlierMonths.has(months[i]))
 
+  const budget = computeMonth(file, month)
+  const rows: BudgetRow[] = budget.groups.flatMap((g) => g.rows).filter((r) => categories.has(r.category.id))
+
   let pace: Pace | null = null
   if (current) {
+    const availableBy = new Map(rows.map((r) => [r.category.id, r.available]))
     // Per category, the same way the summaries count living: a month's net inflow counts as income, not negative spending.
     const figures = (c: Category): PaceCategory => {
       const full = fullBy.get(c.id)!
@@ -148,26 +155,36 @@ export function buildMonthReview(file: BudgetFile, month: MonthKey, today: strin
       return {
         category: c,
         soFar,
+        usualByNow: avg(earlierIndexes.map((i) => Math.max(0, through[i]))),
+        runRate: Math.round((soFar * daysInMonth(month)) / throughDay),
         projected: soFar + Math.max(0, avgFull - avgThrough),
         averageMonth: avg(earlierIndexes.map((i) => Math.max(0, full[i]))),
+        available: availableBy.get(c.id) ?? 0,
       }
     }
+    const total = (rows: PaceFigures[], pick: (r: PaceFigures) => Cents) => sum(rows.map(pick))
     const groups: PaceGroup[] = []
     for (const g of file.categoryGroups) {
       const rows = living.filter((c) => c.groupId === g.id).map(figures).filter((r) => r.soFar || r.projected || r.averageMonth)
       if (!rows.length) continue
       groups.push({
         group: g,
-        soFar: sum(rows.map((r) => r.soFar)),
-        projected: sum(rows.map((r) => r.projected)),
-        averageMonth: sum(rows.map((r) => r.averageMonth)),
+        soFar: total(rows, (r) => r.soFar),
+        usualByNow: total(rows, (r) => r.usualByNow),
+        runRate: total(rows, (r) => r.runRate),
+        projected: total(rows, (r) => r.projected),
+        averageMonth: total(rows, (r) => r.averageMonth),
+        available: total(rows, (r) => r.available),
         categories: rows,
       })
     }
     pace = {
-      livingSoFar: last.living,
-      projected: sum(groups.map((g) => g.projected)),
+      soFar: last.living,
+      usualByNow: total(groups, (g) => g.usualByNow),
+      runRate: total(groups, (g) => g.runRate),
+      projected: total(groups, (g) => g.projected),
       averageMonth: avg(earlier.map((s) => s.living)),
+      available: total(groups, (g) => g.available),
       daysLeft: daysInMonth(month) - throughDay,
       groups,
     }
@@ -184,8 +201,6 @@ export function buildMonthReview(file: BudgetFile, month: MonthKey, today: strin
   }
   missing.sort((a, b) => b.usual - a.usual)
 
-  const budget = computeMonth(file, month)
-  const rows: BudgetRow[] = budget.groups.flatMap((g) => g.rows).filter((r) => categories.has(r.category.id))
   const overspent = rows.filter((r) => r.available < 0).sort((a, b) => a.available - b.available)
 
   const largest = thisMonth.sort((a, b) => a.amount - b.amount).slice(0, 5)
