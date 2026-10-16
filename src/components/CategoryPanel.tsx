@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FocusEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { CategoryRow } from '../model/budgetMath'
-import { monthOf } from '../model/dates'
+import { monthOf, ordinalDay } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
 import { linesOf } from '../model/splits'
@@ -82,6 +82,13 @@ export function CategoryPanel({
     setTargetText(null)
   }
 
+  const commitTargetDay = (e: FocusEvent<HTMLInputElement>) => {
+    const n = Math.round(Number(e.target.value))
+    const targetDay = n >= 1 && n <= 31 ? n : undefined
+    if (targetDay !== category.targetDay) updateCategory(category.id, { targetDay })
+    else e.target.value = category.targetDay?.toString() ?? ''
+  }
+
   return (
     <aside className="slideover">
       <div className="slideover-head">
@@ -147,9 +154,24 @@ export function CategoryPanel({
             }}
           />
           {target !== undefined && (
-            <button type="button" className="link" onClick={() => updateCategory(category.id, { target: undefined })}>
-              Remove
-            </button>
+            <>
+              <label className="target-day">
+                <span className="muted">by the</span>
+                <input
+                  key={category.targetDay ?? 'none'}
+                  type="number"
+                  min={1}
+                  max={31}
+                  placeholder="day"
+                  defaultValue={category.targetDay ?? ''}
+                  onBlur={commitTargetDay}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+              </label>
+              <button type="button" className="link" onClick={() => updateCategory(category.id, { target: undefined, targetDay: undefined })}>
+                Remove
+              </button>
+            </>
           )}
         </div>
         {target === undefined ? (
@@ -161,7 +183,7 @@ export function CategoryPanel({
             </div>
             <p className={toGo > 0 ? 'warn-text' : 'muted'}>
               {toGo > 0
-                ? `${formatCents(toGo)} to go this month.`
+                ? `${formatCents(toGo)} to go${category.targetDay ? ` by the ${ordinalDay(category.targetDay)}` : ' this month'}.`
                 : over > 0
                   ? `Funded, ${formatCents(over)} over the target.`
                   : 'Funded for this month.'}

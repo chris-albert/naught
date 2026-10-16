@@ -472,6 +472,7 @@ dialog.confirm::backdrop { background: rgba(10, 14, 20, 0.5); backdrop-filter: b
 .grid tr.add-row.group td { padding-left: 10px; padding-top: 6px; padding-bottom: 6px; }
 .grid tr.add-row.group button.add { font-weight: 600; }
 .target-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: 7px; vertical-align: 1px; }
+.day-pill { display: inline-block; margin-left: 7px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--panel-2); color: var(--muted); vertical-align: 1px; }
 
 .slideover {
   flex: none; width: 340px; overflow: auto; margin-bottom: 24px; padding: 18px 20px;
@@ -496,6 +497,8 @@ dialog.confirm::backdrop { background: rgba(10, 14, 20, 0.5); backdrop-filter: b
 .slideover-stats strong { font-size: 15px; }
 .target-row { display: flex; align-items: center; gap: 8px; }
 input.target-amount { flex: 1; text-align: right; }
+.target-row .target-day { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 13px; }
+.target-row .target-day input { width: 56px; text-align: center; }
 .target-row button.link { color: var(--muted); font-weight: 500; }
 .target-row button.link:hover { color: var(--neg); }
 .target-bar { height: 6px; margin-top: 12px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
