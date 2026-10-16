@@ -6,7 +6,7 @@ import { GroupPanel } from '../components/GroupPanel'
 import { MoveMoneyPopover, type MoveTarget } from '../components/MoveMoneyPopover'
 import { NameInput } from '../components/NameInput'
 import { computeMonth } from '../model/budgetMath'
-import { addMonths, currentMonth, formatMonth } from '../model/dates'
+import { addMonths, currentMonth, formatMonth, ordinalDay } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
 import { CREDIT_CARD_PAYMENTS_GROUP, type CategoryGroup, type Cents } from '../model/types'
 import { useBudget } from '../store/budgetStore'
@@ -122,6 +122,11 @@ export function BudgetPage() {
                 >
                   <td>
                     {r.category.name}
+                    {r.category.target !== undefined && r.category.targetDay && (
+                      <span className="day-pill" title={`Needed by the ${ordinalDay(r.category.targetDay)}`}>
+                        {ordinalDay(r.category.targetDay)}
+                      </span>
+                    )}
                     {targetShortfall(r) > 0 && <span className="target-dot" title={`${formatCents(targetShortfall(r))} to reach target`} />}
                   </td>
                   <td className={`num ${tint(r.assigned)}`}>

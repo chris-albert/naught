@@ -45,6 +45,8 @@ export interface Category {
   reserve?: boolean
   /** Amount to assign every month. Absent means no target. */
   target?: Cents
+  /** Day of the month (1–31) the target amount is needed by, e.g. a bill's due date. Only meaningful with a target. */
+  targetDay?: number
 }
 
 /** One line of a split transaction. */

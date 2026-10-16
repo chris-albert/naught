@@ -33,3 +33,10 @@ export function shortMonth(month: MonthKey): string {
   const [y, m] = month.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })
 }
+
+/** "1st", "2nd", "3rd", "21st" style day of the month. */
+export function ordinalDay(day: number): string {
+  const rem100 = day % 100
+  const suffix = rem100 >= 11 && rem100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][day % 10] ?? 'th'
+  return `${day}${suffix}`
+}
