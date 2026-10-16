@@ -67,7 +67,9 @@ Early skeleton. Working today:
   falling, the same month last year, plan vs actual by month), Insights
   (recurring payees and subscriptions with price changes, targets vs reality,
   top payees, reserve health), Net worth (every account's month-end balance,
-  off-budget included) and Year in review. These views start their range at
+  off-budget included), Accounts (one account's balance at the end of every
+  day as a line, also reachable from "Balance history" on the account page)
+  and Year in review. These views start their range at
   the first month with data, so a young budget is not averaged over empty
   months.
 - SimpleFIN bank sync: paste a setup token, fetch, link bank accounts to
