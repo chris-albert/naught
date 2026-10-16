@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { BalancePoint } from '../model/accountBalances'
 import { formatCents } from '../model/money'
 import { ChartTooltip, TipRow } from './ChartTooltip'
@@ -11,6 +11,8 @@ const PAD = { top: 12, right: 12, bottom: 28, left: 64 }
 /** One account's end-of-day balance as a line, with the area to the baseline fading out on either side of zero. */
 export function BalanceLine({ points }: { points: BalancePoint[] }) {
   const [hover, setHover] = useState<number | null>(null)
+  // several of these charts share a page, so each needs its own gradient
+  const gradientId = useId()
   const values = points.map((p) => p.balance)
   const lo = Math.min(0, ...values)
   const hi = Math.max(0, ...values)
@@ -35,7 +37,7 @@ export function BalanceLine({ points }: { points: BalancePoint[] }) {
       <div className="chart-plot">
         <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img" aria-label="Balance by day">
           <defs>
-            <linearGradient id="grad-balance-area" className="grad-net-area" gradientUnits="userSpaceOnUse" x1="0" y1={PAD.top} x2="0" y2={PAD.top + innerH}>
+            <linearGradient id={gradientId} className="grad-net-area" gradientUnits="userSpaceOnUse" x1="0" y1={PAD.top} x2="0" y2={PAD.top + innerH}>
               <stop offset="0" />
               <stop offset={zeroOffset} />
               <stop offset="1" />
@@ -50,7 +52,7 @@ export function BalanceLine({ points }: { points: BalancePoint[] }) {
             </g>
           ))}
           <line x1={PAD.left} x2={W - PAD.right} y1={y(0)} y2={y(0)} className="chart-baseline" />
-          {values.length > 0 && <path d={area} fill="url(#grad-balance-area)" />}
+          {values.length > 0 && <path d={area} fill={`url(#${gradientId})`} />}
           <path d={path} className="series-net-halo" />
           <path d={path} className="series-net-line" />
           {hover !== null && <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={PAD.top + innerH} className="chart-crosshair" />}

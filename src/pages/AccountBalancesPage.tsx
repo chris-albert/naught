@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { BalanceLine } from '../components/BalanceLine'
 import { ReportsNav } from '../components/ReportsNav'
 import { addDays, balanceHistory } from '../model/accountBalances'
 import { currentDate } from '../model/dates'
 import { formatCents } from '../model/money'
-import type { Cents } from '../model/types'
+import type { Account, BudgetFile, Cents } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 
 const RANGES: [number, string][] = [
@@ -15,44 +15,30 @@ const RANGES: [number, string][] = [
   [365, '1 year'],
 ]
 
-/** Where the Accounts report shows one account, for links from elsewhere. */
-export const accountBalancesPath = (accountId: string) => `/app/reports/accounts?account=${encodeURIComponent(accountId)}`
+/** The Accounts report, scrolled to one account's card, for links from elsewhere. */
+export const accountBalancesPath = (accountId: string) => `/app/reports/accounts#${encodeURIComponent(accountId)}`
 
-/** One account's balance at the end of every day in the range. */
+/** Every account's balance at the end of each day in the range, one chart per account. */
 export function AccountBalancesPage() {
   const file = useBudget((s) => s.file)!
-  const [params, setParams] = useSearchParams()
+  const { hash } = useLocation()
   const [days, setDays] = useState(90)
   const open = file.accounts.filter((a) => !a.closed)
   const closed = file.accounts.filter((a) => a.closed)
-  const account = file.accounts.find((a) => a.id === params.get('account')) ?? open[0] ?? closed[0]
   const today = currentDate()
   const from = addDays(today, 1 - days)
-  const history = useMemo(() => (account ? balanceHistory(file, account.id, from, today) : null), [file, account, from, today])
+
+  // Coming from an account page: scroll that account's card into view.
+  useEffect(() => {
+    if (!hash) return
+    document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: 'start' })
+  }, [hash])
 
   return (
     <>
       <header className="page-header">
         <h2>Reports</h2>
         <ReportsNav />
-        {account && (
-          <select value={account.id} onChange={(e) => setParams({ account: e.target.value })} aria-label="Account">
-            {open.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-            {closed.length > 0 && (
-              <optgroup label="Closed">
-                {closed.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-        )}
         <div className="segmented">
           {RANGES.map(([n, label]) => (
             <button key={n} className={days === n ? 'on' : ''} onClick={() => setDays(n)}>
@@ -62,30 +48,37 @@ export function AccountBalancesPage() {
         </div>
       </header>
       <div className="page-body">
-        {!account || !history ? (
-          <p className="muted">No accounts yet.</p>
-        ) : (
-          <>
-            <div className="stat-row">
-              <Stat label="Balance" value={history.balance} />
-              <Stat label={`Change · ${days} days`} value={history.change} signed />
-              <Stat label="Lowest" value={history.low} />
-              <Stat label="Highest" value={history.high} />
-            </div>
-            <section className="card">
-              <h3>
-                {account.name} by day{' '}
-                <Link className="bank-link" to={`/app/accounts/${account.id}`}>
-                  transactions ↗
-                </Link>
-              </h3>
-              <p className="muted">The account's balance at the end of each day: every transaction dated that day or earlier, cleared or not.</p>
-              <BalanceLine points={history.points} />
-            </section>
-          </>
-        )}
+        {file.accounts.length === 0 && <p className="muted">No accounts yet.</p>}
+        {open.map((a) => (
+          <AccountCard key={a.id} file={file} account={a} from={from} to={today} days={days} />
+        ))}
+        {closed.map((a) => (
+          <AccountCard key={a.id} file={file} account={a} from={from} to={today} days={days} />
+        ))}
       </div>
     </>
+  )
+}
+
+function AccountCard({ file, account, from, to, days }: { file: BudgetFile; account: Account; from: string; to: string; days: number }) {
+  const history = useMemo(() => balanceHistory(file, account.id, from, to), [file, account.id, from, to])
+  return (
+    <section className="card" id={account.id}>
+      <h3>
+        {account.name}
+        {account.closed && <span className="tag">closed</span>}{' '}
+        <Link className="bank-link" to={`/app/accounts/${account.id}`}>
+          transactions ↗
+        </Link>
+      </h3>
+      <div className="stat-row">
+        <Stat label="Balance" value={history.balance} />
+        <Stat label={`Change · ${days} days`} value={history.change} signed />
+        <Stat label="Lowest" value={history.low} />
+        <Stat label="Highest" value={history.high} />
+      </div>
+      <BalanceLine points={history.points} />
+    </section>
   )
 }
 
