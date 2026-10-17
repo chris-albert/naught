@@ -6,6 +6,7 @@ const TABS: [string, string][] = [
   ['/app/reports/trends', 'Trends'],
   ['/app/reports/insights', 'Insights'],
   ['/app/reports/net-worth', 'Net worth'],
+  ['/app/reports/accounts', 'Accounts'],
   ['/app/reports/year', 'Year in review'],
 ]
 

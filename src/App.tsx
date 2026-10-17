@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { Sidebar } from './components/Sidebar'
 import { sampleBudget } from './demo/sampleBudget'
+import { AccountBalancesPage } from './pages/AccountBalancesPage'
 import { AccountPage } from './pages/AccountPage'
 import { AccountsPage } from './pages/AccountsPage'
 import { BudgetPage } from './pages/BudgetPage'
@@ -149,6 +150,7 @@ function BudgetApp() {
           <Route path="reports/trends" element={<TrendsPage />} />
           <Route path="reports/insights" element={<InsightsPage />} />
           <Route path="reports/net-worth" element={<NetWorthPage />} />
+          <Route path="reports/accounts" element={<AccountBalancesPage />} />
           <Route path="reports/year" element={<YearReviewPage />} />
           <Route path="reports/year/:year" element={<YearReviewPage />} />
           <Route path="accounts" element={<AccountPage />} />

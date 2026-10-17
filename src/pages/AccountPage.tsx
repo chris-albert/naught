@@ -6,6 +6,7 @@ import { TransactionTable } from '../components/TransactionTable'
 import { accountBalance } from '../model/budgetMath'
 import { formatCents } from '../model/money'
 import { isUncategorized } from '../model/splits'
+import { accountBalancesPath } from './AccountBalancesPage'
 import { useBudget } from '../store/budgetStore'
 
 export function AccountPage() {
@@ -39,6 +40,11 @@ export function AccountPage() {
         {uncategorized.length > 0 && (
           <Link to={onlyUncategorized ? base : `${base}?filter=uncategorized`} className={`filter-chip ${onlyUncategorized ? 'on' : ''}`}>
             {uncategorized.length} uncategorized {onlyUncategorized ? '· show all' : ''}
+          </Link>
+        )}
+        {account && (
+          <Link to={accountBalancesPath(account.id)} className="bank-link">
+            Balance history ↗
           </Link>
         )}
         {account?.bankUrl && (
