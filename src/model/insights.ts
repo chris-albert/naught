@@ -18,6 +18,8 @@ export interface TargetAdherence {
   target: Cents
   /** Living category: average net spending per month. Reserve: average assigned per month. */
   actual: Cents
+  /** The same, month by month, aligned with `months`. */
+  byMonth: Cents[]
   /** actual - target */
   delta: Cents
   /** delta / target */
@@ -27,7 +29,12 @@ export interface TargetAdherence {
 
 export interface TargetSummary {
   rows: TargetAdherence[]
-  totals: { target: Cents; actual: Cents }
+  totals: {
+    target: Cents
+    actual: Cents
+    /** Sum of every row's actual in each month, aligned with `months`. */
+    actualByMonth: Cents[]
+  }
 }
 
 /** Every visible category with a target, against what actually happened over `months`. Biggest misses first. */
@@ -38,15 +45,23 @@ export function targetAdherence(file: BudgetFile, months: MonthKey[]): TargetSum
     for (const c of g.categories) {
       const target = c.category.target
       if (target === undefined || c.category.hidden) continue
-      const actual = c.category.reserve ? avg(months.map((m) => file.assigned[m]?.[c.category.id] ?? 0)) : c.average
+      const byMonth = c.category.reserve ? months.map((m) => file.assigned[m]?.[c.category.id] ?? 0) : c.byMonth
+      const actual = avg(byMonth)
       const delta = actual - target
       const slack = Math.max(1000, Math.round(target * 0.15))
       const verdict: TargetVerdict = delta > slack ? 'over' : delta < -slack ? 'under' : 'on'
-      rows.push({ category: c.category, target, actual, delta, pct: target ? delta / target : 0, verdict })
+      rows.push({ category: c.category, target, actual, byMonth, delta, pct: target ? delta / target : 0, verdict })
     }
   }
   rows.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-  return { rows, totals: { target: sum(rows.map((r) => r.target)), actual: sum(rows.map((r) => r.actual)) } }
+  return {
+    rows,
+    totals: {
+      target: sum(rows.map((r) => r.target)),
+      actual: sum(rows.map((r) => r.actual)),
+      actualByMonth: months.map((_, i) => sum(rows.map((r) => r.byMonth[i]))),
+    },
+  }
 }
 
 // ---------- recurring payees ----------
