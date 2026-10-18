@@ -6,6 +6,7 @@ import { Info } from '../components/Info'
 import { MonthlyBars } from '../components/MonthlyBars'
 import { ReportsNav } from '../components/ReportsNav'
 import { currentMonth, formatMonth } from '../model/dates'
+import { targetAdherence } from '../model/insights'
 import { formatCents } from '../model/money'
 import { buildReport, monthRange, type CategoryReport, type GroupReport, type MonthSummary } from '../model/reports'
 import { trendPath, type TrendScope } from '../model/trend'
@@ -25,6 +26,8 @@ export function ReportsPage() {
   const months = useMemo(() => monthRange(currentMonth(), count), [count])
   const today = new Date().getDate()
   const report = useMemo(() => buildReport(file, months, today), [file, months, today])
+  const targets = useMemo(() => targetAdherence(file, months), [file, months])
+  const vsTargets = targets.totals.actual - targets.totals.target
   const groups = useMemo(() => (includeReserves ? report.groups : withoutReserves(report.groups)), [report, includeReserves])
   const summaries = useMemo(() => (includeReserves ? report.summaries : ignoringReserves(report.summaries)), [report, includeReserves])
   const last = summaries[summaries.length - 1]
@@ -63,6 +66,18 @@ export function ReportsPage() {
             <strong className={report.targets > report.avgIncome ? 'neg' : ''}>{formatCents(report.targets)}</strong>
             {report.avgIncome > 0 && <span className="muted">{Math.round((100 * report.targets) / report.avgIncome)}% of income</span>}
           </div>
+          {targets.rows.length > 0 && (
+            <div
+              className="stat"
+              title="Average monthly spending in the categories that have a target (for a reserve, what was assigned to it), minus what their targets add up to"
+            >
+              <span className="muted">Vs targets</span>
+              <strong className={vsTargets > 0 ? 'neg' : vsTargets < 0 ? 'pos' : ''}>
+                {vsTargets === 0 ? '—' : `${vsTargets > 0 ? '▲' : '▼'} ${formatCents(Math.abs(vsTargets))}`}
+              </strong>
+              <span className="muted">{formatCents(targets.totals.actual)} avg actual</span>
+            </div>
+          )}
           <Stat label="Avg living spending" value={report.avgLiving} />
           {includeReserves && <Stat label="Avg set aside" value={report.avgSetAside} signed />}
           <Stat label="Avg monthly net" value={avgNet} signed />
@@ -179,6 +194,22 @@ export function ReportsPage() {
               values={summaries.map((s) => s.net)}
               signed
             />
+            {targets.rows.length > 0 && (
+              <>
+                <SummaryRow
+                  label="Targets"
+                  info="What every category's monthly target adds up to. Targets are what is set today, so the same figure applies to every month shown."
+                  values={months.map(() => targets.totals.target)}
+                />
+                <SummaryRow
+                  label="Vs targets"
+                  info="Spending in the categories that have a target (for a reserve, what was assigned to it) minus their targets. Above zero means more went out than planned."
+                  values={targets.totals.actualByMonth.map((v) => v - targets.totals.target)}
+                  signed
+                  overIsBad
+                />
+              </>
+            )}
             <SummaryRow
               label="Cumulative net"
               info="A running total of each month's net, starting from zero at the first month shown. Going up means you are ending more months ahead than behind over this range."
@@ -265,17 +296,21 @@ function SummaryRow({
   info,
   values,
   signed = false,
+  overIsBad = false,
   noTotals = false,
 }: {
   label: string
   info: string
   values: Cents[]
   signed?: boolean
+  /** Flip the colors: a positive figure is the bad one. */
+  overIsBad?: boolean
   noTotals?: boolean
 }) {
   const total = values.reduce((t, v) => t + v, 0)
   const average = values.length ? Math.round(total / values.length) : 0
-  const cls = (v: Cents) => (signed ? (v < 0 ? 'soft-neg' : v > 0 ? 'soft-pos' : '') : '')
+  const [neg, pos] = overIsBad ? ['soft-pos', 'soft-neg'] : ['soft-neg', 'soft-pos']
+  const cls = (v: Cents) => (signed ? (v < 0 ? neg : v > 0 ? pos : '') : '')
   const show = (v: Cents) => (v === 0 ? <span className="muted">–</span> : formatCents(v))
   return (
     <tr className="total-row">

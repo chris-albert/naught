@@ -55,7 +55,7 @@ describe('targetAdherence', () => {
       ['rent', 150500, 500, 'on'],
     ])
     expect(s.rows[0].pct).toBeCloseTo(0.2)
-    expect(s.totals).toEqual({ target: 230000, actual: 222500 })
+    expect(s.totals).toEqual({ target: 230000, actual: 222500, actualByMonth: [222500, 222500, 222500, 222500] })
   })
 
   it('leaves out hidden categories and ones without a target', () => {
