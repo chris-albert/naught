@@ -376,6 +376,7 @@ input.assigned:focus { border-color: var(--accent); background: var(--panel); bo
 .card h3 { margin: 0 0 8px; }
 .analyze-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
 .analyze-row > .muted:first-child { flex: 1 1 100%; }
+.analyze-row button svg { width: 15px; height: 15px; vertical-align: -2px; margin-right: 6px; }
 .setup-steps { margin: 0 0 14px; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; line-height: 1.5; }
 .setup-steps a { color: var(--accent); }
 
