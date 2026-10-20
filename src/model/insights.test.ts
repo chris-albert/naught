@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { recurringPayees, reserveHealth, targetAdherence, topPayees } from './insights'
+import { looksRaw, normalizePayee, recurringPayees, reserveHealth, targetAdherence, topPayees } from './insights'
 import { emptyBudget, INCOME_CATEGORY_ID, type BudgetFile, type Transaction } from './types'
 
 function fixture(): BudgetFile {
@@ -81,7 +81,7 @@ describe('recurringPayees', () => {
       txn({ date: '2026-04-03', amount: -1549, payee: 'Netflix', categoryId: 'fun' }),
       txn({ date: '2025-05-10', amount: -13900, payee: 'Amazon Prime', categoryId: 'fun' }),
       txn({ date: '2026-05-10', amount: -13900, payee: 'Amazon Prime', categoryId: 'fun' }), // after today: ignored
-      txn({ date: '2024-05-10', amount: -13900, payee: 'Amazon Prime', categoryId: 'fun' }), // before the window
+      txn({ date: '2024-03-10', amount: -13900, payee: 'Amazon Prime', categoryId: 'fun' }), // before the two-year window
       txn({ date: '2025-05-10', amount: -14900, payee: 'Costco', categoryId: 'food' }),
       txn({ date: '2026-04-10', amount: -14900, payee: 'Costco', categoryId: 'food' }),
       txn({ date: '2026-04-01', amount: -500, payee: 'Grocer', categoryId: 'food' }),
@@ -139,6 +139,75 @@ describe('recurringPayees', () => {
     // stopped and unstable payees are not fixed costs
     expect(s.fixedMonthly).toBe(1799 + 999)
     expect(s.payees.map((p) => p.payee)).toEqual(['Power Co', 'Gym', 'Netflix', 'Spotify'])
+  })
+
+  it('sees a yearly payee whose charges straddle the monthly window and says when the next is due', () => {
+    const f = fixture()
+    f.transactions.push(
+      txn({ date: '2025-04-27', amount: -7999, payee: 'Strava', categoryId: 'fun' }),
+      txn({ date: '2026-04-27', amount: -7999, payee: 'Strava', categoryId: 'fun' }),
+      // renewed once, then the next renewal never came: stopped
+      txn({ date: '2024-09-10', amount: -9900, payee: 'Shapes', categoryId: 'fun' }),
+      txn({ date: '2025-09-10', amount: -9900, payee: 'Shapes', categoryId: 'fun' }),
+      // a monthly series that ended more than 13 months ago is not worth listing
+      ...['2024-10', '2024-11', '2024-12', '2025-01', '2025-02'].map((m) => txn({ date: `${m}-05`, amount: -1200, payee: 'Old Gym', categoryId: 'fun' })),
+    )
+    const s = recurringPayees(f, '2026-10-19')
+    const by = Object.fromEntries(s.payees.map((p) => [p.payee, p]))
+    expect(Object.keys(by).sort()).toEqual(['Shapes', 'Strava'])
+    expect(by.Strava).toMatchObject({ cadence: 'yearly', status: 'active', count: 2, nextDate: '2027-04-27' })
+    expect(by.Shapes).toMatchObject({ cadence: 'yearly', status: 'stopped', lastDate: '2025-09-10' })
+    expect(by.Shapes.nextDate).toBeUndefined()
+    expect(s.fixedMonthly).toBe(Math.round(7999 / 12))
+  })
+
+  it('counts raw bank spellings and renamed payees as one series', () => {
+    const f = fixture()
+    f.transactions.push(
+      txn({ date: '2026-01-21', amount: -4999, payee: 'Peloton', categoryId: 'fun' }),
+      txn({ date: '2026-02-21', amount: -4999, payee: 'Peloton', categoryId: 'fun' }),
+      txn({ date: '2026-03-21', amount: -4999, payee: 'PELOTON* MEMBERSHIP NEW YORK NY null XXXXXXXXXXXX8464', categoryId: 'fun' }),
+      txn({ date: '2026-04-21', amount: -4999, payee: 'Peloton', categoryId: 'fun' }),
+      // two card numbers, no clean payee: still one series
+      txn({ date: '2026-01-24', amount: -2699, payee: 'NETFLIX.COM LOS GATOS CA null XXXXXXXXXXXX1111', categoryId: 'fun' }),
+      txn({ date: '2026-02-24', amount: -2699, payee: 'NETFLIX.COM LOS GATOS CA null XXXXXXXXXXXX1111', categoryId: 'fun' }),
+      txn({ date: '2026-03-24', amount: -2699, payee: 'NETFLIX.COM LOS GATOS CA null XXXXXXXXXXXX9678', categoryId: 'fun' }),
+      txn({ date: '2026-04-24', amount: -2699, payee: 'NETFLIX.COM LOS GATOS CA null XXXXXXXXXXXX9678', categoryId: 'fun' }),
+      // two products charging a week apart stay two payees, even though one name starts with the other
+      ...['2026-02-07', '2026-03-07', '2026-04-07'].map((date) => txn({ date, amount: -1628, payee: 'Amazon Prime', categoryId: 'fun' })),
+      ...['2026-02-14', '2026-03-14', '2026-04-14'].map((date) => txn({ date, amount: -499, payee: 'Amazon', categoryId: 'fun' })),
+      // a rename: the old and new spelling never charge in the same month
+      ...['2026-01-28', '2026-02-28'].map((date) => txn({ date, amount: -1899, payee: 'Hulu', categoryId: 'fun' })),
+      ...['2026-03-28', '2026-04-28'].map((date) => txn({ date, amount: -1899, payee: 'Hulu Plus', categoryId: 'fun' })),
+    )
+    const s = recurringPayees(f, '2026-04-30')
+    const by = Object.fromEntries(s.payees.map((p) => [p.payee, p]))
+    expect(Object.keys(by).sort()).toEqual(['Amazon', 'Amazon Prime', 'Hulu', 'NETFLIX.COM LOS GATOS CA null XXXXXXXXXXXX1111', 'Peloton'])
+    expect(by.Peloton.count).toBe(4)
+    expect(by['NETFLIX.COM LOS GATOS CA null XXXXXXXXXXXX1111'].count).toBe(4)
+    expect(by.Amazon.count).toBe(3)
+    expect(by.Hulu).toMatchObject({ count: 4, lastDate: '2026-04-28', status: 'active' })
+  })
+})
+
+describe('payee normalization', () => {
+  it('tells raw bank strings from renamed payees', () => {
+    expect(looksRaw('PELOTON* MEMBERSHIP NEW YORK NY null XXXXXXXXXXXX8464')).toBe(true)
+    expect(looksRaw('SQ *ZEITGEIST San Francisco CA')).toBe(true)
+    expect(looksRaw('CITIBAN0000282')).toBe(true)
+    expect(looksRaw('WHOLEFDS STO#10717 SAN FRANCISCO CA')).toBe(true)
+    expect(looksRaw('Peloton')).toBe(false)
+    expect(looksRaw('Disney+')).toBe(false)
+    expect(looksRaw('AAA')).toBe(false)
+    expect(looksRaw('Citi 2732')).toBe(true)
+  })
+
+  it('drops processor prefixes, card masks and digits', () => {
+    expect(normalizePayee('PELOTON* MEMBERSHIP NEW YORK NY null XXXXXXXXXXXX8464')).toBe('peloton membership new york ny')
+    expect(normalizePayee('TST*FLOUR & WATER PAST San Francisco CA')).toBe('flour & water past san francisco ca')
+    expect(normalizePayee('SQ *ZEITGEIST San Francisco CA')).toBe('zeitgeist san francisco ca')
+    expect(normalizePayee('AMAZON MKTPL*5O13F8Z11 SEATTLE WA null XXXXXXXXXXXX2920')).toBe('amazon mktpl seattle wa')
+    expect(normalizePayee("Trader Joe's")).toBe("trader joe's")
   })
 })
 
