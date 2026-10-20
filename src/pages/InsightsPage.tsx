@@ -20,6 +20,7 @@ const RANGES = [12, 24]
  */
 export function InsightsPage() {
   const file = useBudget((s) => s.file)!
+  const setNotRecurring = useBudget((s) => s.setNotRecurring)
   const [count, setCount] = useState(12)
   const today = currentDate()
   const months = useMemo(() => sinceFirstActivity(file, monthRange(currentMonth(), count)), [file, count])
@@ -36,6 +37,9 @@ export function InsightsPage() {
   const priceChanges = recurring.payees.filter((p) => p.priceChange)
   const started = recurring.payees.filter((p) => p.status === 'new')
   const stopped = recurring.payees.filter((p) => p.status === 'stopped')
+  const monthly = recurring.payees.filter((p) => p.cadence === 'monthly')
+  const yearly = recurring.payees.filter((p) => p.cadence === 'yearly')
+  const dismissed = file.notRecurring ?? []
 
   return (
     <>
@@ -51,11 +55,12 @@ export function InsightsPage() {
         </div>
       </header>
       <div className="page-body">
-        <section className="card">
+        <section className="card recurring">
           <h3>Recurring payees and subscriptions</h3>
           <p className="muted">
-            Payees that charge about once a month (three or more times in the last 13 months) or once a year (twice in the last two years).
-            Fixed costs are the ones whose amount holds steady; a yearly charge counts a twelfth per month.
+            Payees that bill like a subscription: about once a month on a set day or for a set amount (three or more times in the last 13
+            months), or once a year for a steady amount (twice in the last two years). Fixed costs are the ones whose amount holds steady; a
+            yearly charge counts a twelfth per month. Anything that is really a habit can be marked "not recurring" from its row.
           </p>
           <div className="stat-row">
             <Stat label="Fixed costs per month" value={recurring.fixedMonthly} />
@@ -118,42 +123,97 @@ export function InsightsPage() {
               )}
             </div>
           )}
-          {recurring.payees.length === 0 ? (
-            <p className="muted">No recurring payees yet. They show up once a payee has charged three months in a row.</p>
+          <h4>Monthly</h4>
+          {monthly.length === 0 ? (
+            <p className="muted">No monthly payees yet. They show up once a payee has charged three months in a row on a set day or for a set amount.</p>
           ) : (
             <table className="grid insight-table">
               <thead>
                 <tr>
                   <th>Payee</th>
                   <th>Category</th>
-                  <th>Cadence</th>
                   <th className="num">Amount</th>
-                  <th className="num">Per month</th>
                   <th>Last charged</th>
                   <th></th>
+                  <th className="row-actions"></th>
                 </tr>
               </thead>
               <tbody>
-                {recurring.payees.map((p) => (
+                {monthly.map((p) => (
                   <tr key={p.payee} className={p.status === 'stopped' ? 'insight-stopped' : ''}>
                     <td>
                       <PayeeLink payee={p.payee} />
                     </td>
                     <td>{categoryCell(p.categoryId)}</td>
-                    <td className="muted">{p.cadence}</td>
                     <td className="num">{formatCents(p.priceChange?.to ?? p.amount)}</td>
-                    <td className="num">{formatCents(p.monthlyCost)}</td>
-                    <td className="muted">
-                      {p.lastDate}
-                      {p.nextDate && <> · due {p.nextDate}</>}
-                    </td>
+                    <td className="muted">{p.lastDate}</td>
                     <td>
                       <StatusTags p={p} />
+                    </td>
+                    <td className="row-actions">
+                      <button className="link" title="Leave this payee out of the recurring report" onClick={() => setNotRecurring(p.payee, true)}>
+                        not recurring
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+          <h4>Yearly</h4>
+          {yearly.length === 0 ? (
+            <p className="muted">No yearly payees yet. They show up once a payee has charged twice, about a year apart, for about the same amount.</p>
+          ) : (
+            <table className="grid insight-table">
+              <thead>
+                <tr>
+                  <th>Payee</th>
+                  <th>Category</th>
+                  <th className="num">Amount</th>
+                  <th className="num">Per month</th>
+                  <th>Last charged</th>
+                  <th>Next due</th>
+                  <th></th>
+                  <th className="row-actions"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {yearly.map((p) => (
+                  <tr key={p.payee} className={p.status === 'stopped' ? 'insight-stopped' : ''}>
+                    <td>
+                      <PayeeLink payee={p.payee} />
+                    </td>
+                    <td>{categoryCell(p.categoryId)}</td>
+                    <td className="num">{formatCents(p.amount)}</td>
+                    <td className="num">{formatCents(p.monthlyCost)}</td>
+                    <td className="muted">{p.lastDate}</td>
+                    <td className="muted">{p.nextDate ?? '—'}</td>
+                    <td>
+                      <StatusTags p={p} />
+                    </td>
+                    <td className="row-actions">
+                      <button className="link" title="Leave this payee out of the recurring report" onClick={() => setNotRecurring(p.payee, true)}>
+                        not recurring
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {dismissed.length > 0 && (
+            <p className="muted dismissed-payees">
+              Marked not recurring:{' '}
+              {dismissed.map((payee, i) => (
+                <span key={payee}>
+                  {i > 0 && ', '}
+                  {payee}{' '}
+                  <button className="link" title="Show this payee in the recurring report again" onClick={() => setNotRecurring(payee, false)}>
+                    undo
+                  </button>
+                </span>
+              ))}
+            </p>
           )}
         </section>
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { looksRaw, normalizePayee, recurringPayees, reserveHealth, targetAdherence, topPayees } from './insights'
+import { looksRaw, normalizePayee, recurringPayees, reserveHealth, setNotRecurring, targetAdherence, topPayees } from './insights'
 import { emptyBudget, INCOME_CATEGORY_ID, type BudgetFile, type Transaction } from './types'
 
 function fixture(): BudgetFile {
@@ -187,6 +187,50 @@ describe('recurringPayees', () => {
     expect(by['NETFLIX.COM LOS GATOS CA null XXXXXXXXXXXX1111'].count).toBe(4)
     expect(by.Amazon.count).toBe(3)
     expect(by.Hulu).toMatchObject({ count: 4, lastDate: '2026-04-28', status: 'active' })
+  })
+
+  it('tells a subscription or bill from a habit by billing day, exact amount and one charge a month', () => {
+    const f = fixture()
+    f.transactions.push(
+      // a restaurant: about monthly on average, but scattered days, odd amounts, some months twice
+      ...[
+        ['2026-01-04', -6318],
+        ['2026-02-11', -4420],
+        ['2026-02-27', -9105],
+        ['2026-03-19', -5260],
+        ['2026-04-02', -7733],
+        ['2026-04-25', -3891],
+        ['2026-05-30', -6604],
+        ['2026-06-14', -5120],
+      ].map(([date, amount]) => txn({ date: date as string, amount: amount as number, payee: 'Taqueria', categoryId: 'food' })),
+      // a utility: amount swings, but it lands on the 5th every month
+      ...[-5000, -9000, -12000, -7000, -3000, -6000].map((amount, i) => txn({ date: `2026-0${i + 1}-05`, amount, payee: 'Power Co', categoryId: 'rent' })),
+      // a class with a fixed fee paid whenever the person remembers: exact amount carries it
+      ...['2026-01-03', '2026-02-19', '2026-03-10', '2026-04-27', '2026-05-15', '2026-06-08'].map((date) => txn({ date, amount: -12800, payee: 'Tutu School', categoryId: 'fun' })),
+      // a farm box: exact amount, but twice most months
+      ...['2026-01-03', '2026-01-17', '2026-02-07', '2026-02-21', '2026-03-07', '2026-03-21', '2026-04-04', '2026-04-18'].map((date) => txn({ date, amount: -1550, payee: 'Farm Box', categoryId: 'food' })),
+    )
+    const s = recurringPayees(f, '2026-06-20')
+    expect(s.payees.map((p) => p.payee).sort()).toEqual(['Power Co', 'Tutu School'])
+    expect(s.payees.find((p) => p.payee === 'Power Co')!.stable).toBe(false)
+  })
+
+  it('drops a yearly pair whose amounts disagree and payees marked not recurring', () => {
+    let f = fixture()
+    f.transactions.push(
+      txn({ date: '2025-10-03', amount: -6980, payee: 'Taproom', categoryId: 'food' }),
+      txn({ date: '2026-10-03', amount: -10342, payee: 'Taproom', categoryId: 'food' }),
+      txn({ date: '2025-04-27', amount: -7999, payee: 'Strava', categoryId: 'fun' }),
+      txn({ date: '2026-04-27', amount: -7999, payee: 'Strava', categoryId: 'fun' }),
+      ...['2026-07-21', '2026-08-21', '2026-09-21'].map((date) => txn({ date, amount: -4999, payee: 'Therapist', categoryId: 'fun' })),
+    )
+    expect(recurringPayees(f, '2026-10-19').payees.map((p) => p.payee).sort()).toEqual(['Strava', 'Therapist'])
+    f = setNotRecurring(f, 'Therapist', true)
+    expect(f.notRecurring).toEqual(['Therapist'])
+    expect(recurringPayees(f, '2026-10-19').payees.map((p) => p.payee)).toEqual(['Strava'])
+    f = setNotRecurring(f, 'Therapist', false)
+    expect(f.notRecurring).toEqual([])
+    expect(recurringPayees(f, '2026-10-19').payees).toHaveLength(2)
   })
 })
 

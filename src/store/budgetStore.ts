@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ensurePaymentCategories } from '../model/creditCards'
+import { setNotRecurring } from '../model/insights'
 import { deletePayeeRule, setPayeeRule } from '../model/payeeRules'
 import { setTransfer } from '../model/transfers'
 import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type CategoryGroup, type Cents, type MonthKey, type Transaction } from '../model/types'
@@ -49,6 +50,8 @@ interface BudgetState {
   /** Always give `payee` this category; also fills it in on existing uncategorized transactions. */
   setPayeeRule: (payee: string, categoryId: string) => void
   deletePayeeRule: (payee: string) => void
+  /** Leave `payee` out of the recurring report (or bring it back). */
+  setNotRecurring: (payee: string, value: boolean) => void
   addAccount: (account: Omit<Account, 'id'>) => void
   updateAccount: (accountId: string, patch: Partial<Account>) => void
   /** Removes the account and every transaction in it. */
@@ -161,6 +164,8 @@ export const useBudget = create<BudgetState>((set, get) => ({
   setPayeeRule: (payee, categoryId) => get().update((file) => setPayeeRule(file, payee, categoryId), 'payee rule'),
 
   deletePayeeRule: (payee) => get().update((file) => deletePayeeRule(file, payee), 'delete payee rule'),
+
+  setNotRecurring: (payee, value) => get().update((file) => setNotRecurring(file, payee, value), value ? 'not recurring' : 'recurring again'),
 
   addAccount: (account) =>
     get().update((file) => ({ ...file, accounts: [...file.accounts, { ...account, id: crypto.randomUUID() }] }), 'add account'),
