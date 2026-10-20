@@ -89,25 +89,53 @@ export async function getAccessUrl(): Promise<string | undefined> {
 
 export const clearAccessUrl = () => changeAccessUrl(undefined)
 
+export const BRIDGE_URL = 'https://beta-bridge.simplefin.org'
+
+export type SetupInput =
+  /** A base64 setup token, or the claim URL it decodes to: POST it once to get the access URL. */
+  | { kind: 'claim'; url: string }
+  /** An access URL pasted directly (e.g. the public demo one). */
+  | { kind: 'access'; url: string }
+
+/**
+ * Work out what was pasted: a setup token (base64 of a claim URL), the claim
+ * URL itself, or an access URL. Quotes, whitespace and line breaks around it
+ * are ignored. Returns undefined when it is none of those.
+ */
+export function parseSetupInput(raw: string): SetupInput | undefined {
+  const input = raw.replace(/\s+/g, '').replace(/^["'`]+|["'`]+$/g, '')
+  if (!input) return undefined
+  const asUrl = (text: string): URL | undefined => {
+    if (!/^https?:\/\//i.test(text)) return undefined
+    try {
+      return new URL(text)
+    } catch {
+      return undefined
+    }
+  }
+  const direct = asUrl(input)
+  if (direct) return { kind: /\/claim\//.test(direct.pathname) ? 'claim' : 'access', url: input }
+  try {
+    const decoded = atob(input)
+    if (asUrl(decoded)) return { kind: 'claim', url: decoded }
+  } catch {
+    // not base64
+  }
+  return undefined
+}
+
 /**
  * Decode a setup token, claim it, and remember the resulting access URL.
  * An access URL pasted directly (e.g. the public demo one) is accepted as-is.
  */
 export async function claimSetupToken(setupToken: string): Promise<string> {
-  const input = setupToken.trim()
-  if (/^https?:\/\//.test(input)) {
-    new URL(input)
-    await changeAccessUrl(input)
-    return input
+  const parsed = parseSetupInput(setupToken)
+  if (!parsed) throw new Error('That does not look like a SimpleFIN setup token')
+  if (parsed.kind === 'access') {
+    await changeAccessUrl(parsed.url)
+    return parsed.url
   }
-  let claimUrl: string
-  try {
-    claimUrl = atob(input)
-    new URL(claimUrl)
-  } catch {
-    throw new Error('That does not look like a SimpleFIN setup token')
-  }
-  const res = await fetch(claimUrl, { method: 'POST' })
+  const res = await fetch(parsed.url, { method: 'POST' })
   if (!res.ok) throw new Error(`SimpleFIN rejected the token (${res.status}). Tokens can only be claimed once.`)
   const accessUrl = (await res.text()).trim()
   await changeAccessUrl(accessUrl)
