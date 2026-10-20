@@ -208,11 +208,37 @@ function yearAfter(isoDate: string): string {
 }
 
 /**
+ * Whether a monthly series bills like a subscription or a bill rather than a habit. A
+ * subscription lands on the same day of the month (within three days, wrapping at month
+ * end) or for the exact same amount, in two thirds of its charges, and almost never twice
+ * in one month. A restaurant visited a few times a month passes the gap test but fails this.
+ */
+function billsLikeASchedule(charges: Transaction[]): boolean {
+  const days = charges.map((t) => Number(t.date.slice(8, 10)))
+  const day = median(days)
+  const sameDay = days.filter((d) => Math.abs(d - day) <= 3 || Math.abs(d - day) >= 27).length / days.length
+  const amounts = charges.map((t) => t.amount)
+  const exact = amounts.filter((a) => amounts.indexOf(a) !== amounts.lastIndexOf(a)).length / amounts.length
+  const perMonth = new Map<string, number>()
+  for (const t of charges) perMonth.set(monthOf(t.date), (perMonth.get(monthOf(t.date)) ?? 0) + 1)
+  const crowded = [...perMonth.values()].filter((n) => n > 1).length / perMonth.size
+  return (sameDay >= 2 / 3 || exact >= 2 / 3) && crowded < 0.5
+}
+
+/** Mark `payee` as something the recurring report should leave out, or let it back in. */
+export function setNotRecurring(file: BudgetFile, payee: string, value: boolean): BudgetFile {
+  const rest = (file.notRecurring ?? []).filter((p) => p !== payee)
+  return { ...file, notRecurring: value ? [...rest, payee] : rest }
+}
+
+/**
  * Payees that charge on a schedule: monthly (three or more charges about a month
- * apart, the last within `lookbackMonths` months of `today`) or yearly (two or more
- * about a year apart, looked for over twice that span so both charges of a new annual
- * plan can be seen). Refunds and income never count; uncategorized charges do. Raw bank
- * strings are counted under the clean payee they match (see `payeeGroups`).
+ * apart, the last within `lookbackMonths` months of `today`, billing like a schedule
+ * rather than a habit) or yearly (two or more about a year apart for a steady amount,
+ * looked for over twice that span so both charges of a new annual plan can be seen).
+ * Refunds and income never count; uncategorized charges do. Raw bank strings are counted
+ * under the clean payee they match (see `payeeGroups`); payees in `file.notRecurring`
+ * are left out.
  */
 export function recurringPayees(file: BudgetFile, today: string, lookbackMonths = 13): RecurringSummary {
   const categories = spendingCategories(file)
@@ -230,8 +256,10 @@ export function recurringPayees(file: BudgetFile, today: string, lookbackMonths 
     list.push(t)
   }
 
+  const notRecurring = new Set(file.notRecurring)
   const payees: RecurringPayee[] = []
   for (const [payee, charges] of byPayee) {
+    if (notRecurring.has(payee)) continue
     charges.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     if (charges.length < 2) continue
     const gaps = charges.slice(1).map((t, i) => daysBetween(charges[i].date, t.date))
@@ -240,7 +268,7 @@ export function recurringPayees(file: BudgetFile, today: string, lookbackMonths 
     if (charges.length >= 3 && gap >= 24 && gap <= 38) cadence = 'monthly'
     else if (gap >= 330 && gap <= 400) cadence = 'yearly'
     else continue
-    if (cadence === 'monthly' && charges[charges.length - 1].date < monthlyFrom) continue
+    if (cadence === 'monthly' && (charges[charges.length - 1].date < monthlyFrom || !billsLikeASchedule(charges))) continue
 
     const amounts = charges.map((t) => -t.amount)
     const amount = median(amounts)
@@ -250,6 +278,7 @@ export function recurringPayees(file: BudgetFile, today: string, lookbackMonths 
     const [penultimate, latest] = amounts.slice(-2)
     const repriced = charges.length >= 3 && Math.abs(penultimate - latest) <= Math.max(penultimate, latest) * 0.01
     const stable = steady(amounts, amount) || (repriced && steady(amounts.slice(0, -2), median(amounts.slice(0, -2))))
+    if (cadence === 'yearly' && !stable) continue // two charges a year apart for different amounts is a yearly outing, not a renewal
     const first = charges[0]
     const last = charges[charges.length - 1]
     const newSince = `${addMonths(monthOf(today), -2)}-01`

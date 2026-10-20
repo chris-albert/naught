@@ -102,6 +102,8 @@ export interface BudgetFile {
   payeeRules?: Record<string, string>
   /** Import ids of bank transactions the user deleted; sync does not bring them back. */
   ignoredImportIds?: string[]
+  /** Payees the person said are not a subscription or bill; the recurring report leaves them out. */
+  notRecurring?: string[]
 }
 
 export function emptyBudget(name: string): BudgetFile {
