@@ -72,8 +72,10 @@ Early skeleton. Working today:
   history" on the account page) and Year in review. These views start their range at
   the first month with data, so a young budget is not averaged over empty
   months.
-- SimpleFIN bank sync: paste a setup token, fetch, link bank accounts to
-  budget accounts (or create them), import. Pending transactions are skipped
+- SimpleFIN bank sync: the Sync page walks through creating the SimpleFIN
+  Bridge account and setup token (with links straight to the right pages),
+  recognizes a pasted setup token, claim URL or access URL as you type, then
+  fetch, link bank accounts to budget accounts (or create them), import. Pending transactions are skipped
   (banks change their id and amount when they post). Posted ones are
   de-duplicated by bank id and by same-amount-within-10-days against manually
   entered ones. The SimpleFIN credentials live in the browser's IndexedDB, not

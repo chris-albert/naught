@@ -106,3 +106,48 @@ describe('simplefin credentials across devices', () => {
     expect(drive.files.size).toBe(0)
   })
 })
+
+describe('parseSetupInput', () => {
+  const claimUrl = 'https://beta-bridge.simplefin.org/simplefin/claim/DEMO-v2-BC8BDCD1432EDEF15D90'
+  const token = btoa(claimUrl)
+
+  it('decodes a setup token to its claim URL', async () => {
+    const { parseSetupInput } = await loadClient()
+    expect(parseSetupInput(token)).toEqual({ kind: 'claim', url: claimUrl })
+  })
+
+  it('ignores whitespace, line breaks and quotes around a pasted token', async () => {
+    const { parseSetupInput } = await loadClient()
+    expect(parseSetupInput(`  "${token.slice(0, 20)}\n${token.slice(20)}" `)).toEqual({ kind: 'claim', url: claimUrl })
+  })
+
+  it('accepts the claim URL itself', async () => {
+    const { parseSetupInput } = await loadClient()
+    expect(parseSetupInput(claimUrl)).toEqual({ kind: 'claim', url: claimUrl })
+  })
+
+  it('accepts an access URL as-is', async () => {
+    const { parseSetupInput } = await loadClient()
+    const access = 'https://demo:demo@beta-bridge.simplefin.org/simplefin'
+    expect(parseSetupInput(access)).toEqual({ kind: 'access', url: access })
+  })
+
+  it('rejects anything else', async () => {
+    const { parseSetupInput } = await loadClient()
+    expect(parseSetupInput('')).toBeUndefined()
+    expect(parseSetupInput('hello there')).toBeUndefined()
+    expect(parseSetupInput(btoa('not a url'))).toBeUndefined()
+  })
+
+  it('claims a pasted claim URL instead of storing it as the access URL', async () => {
+    const client = await loadClient()
+    const fetchMock = vi.fn(async () => new Response('https://u:p@beta-bridge.simplefin.org/simplefin\n'))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      expect(await client.claimSetupToken(claimUrl)).toBe('https://u:p@beta-bridge.simplefin.org/simplefin')
+      expect(fetchMock).toHaveBeenCalledWith(claimUrl, { method: 'POST' })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})
