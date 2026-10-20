@@ -53,8 +53,8 @@ export function InsightsPage() {
         <section className="card">
           <h3>Recurring payees and subscriptions</h3>
           <p className="muted">
-            Payees that charge about once a month (three or more times) or once a year, found in the last 13 months. Fixed costs are the ones
-            whose amount holds steady.
+            Payees that charge about once a month (three or more times in the last 13 months) or once a year (twice in the last two years).
+            Fixed costs are the ones whose amount holds steady; a yearly charge counts a twelfth per month.
           </p>
           <div className="stat-row">
             <Stat label="Fixed costs per month" value={recurring.fixedMonthly} />
@@ -141,7 +141,10 @@ export function InsightsPage() {
                     <td className="muted">{p.cadence}</td>
                     <td className="num">{formatCents(p.priceChange?.to ?? p.amount)}</td>
                     <td className="num">{formatCents(p.monthlyCost)}</td>
-                    <td className="muted">{p.lastDate}</td>
+                    <td className="muted">
+                      {p.lastDate}
+                      {p.nextDate && <> · due {p.nextDate}</>}
+                    </td>
                     <td>
                       <StatusTags p={p} />
                     </td>
