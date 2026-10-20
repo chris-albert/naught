@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react'
 import { Picker } from '../components/Picker'
 import { formatCents } from '../model/money'
 import type { AccountType } from '../model/types'
-import { claimSetupToken, clearAccessUrl, fetchAccounts, getAccessUrl, type SimplefinAccount } from '../simplefin/client'
+import {
+  BRIDGE_URL,
+  claimSetupToken,
+  clearAccessUrl,
+  fetchAccounts,
+  getAccessUrl,
+  parseSetupInput,
+  type SimplefinAccount,
+} from '../simplefin/client'
 import { createLinkedAccount, mergeSimplefin, parseDecimal, type SyncStats } from '../simplefin/sync'
 import { useBudget } from '../store/budgetStore'
 
@@ -35,6 +43,7 @@ export function SyncPage() {
   const [since, setSince] = useState<string>('')
   const [choices, setChoices] = useState<Record<string, LinkChoice>>({})
   const [stats, setStats] = useState<SyncStats | null>(null)
+  const parsed = parseSetupInput(token)
 
   useEffect(() => {
     getAccessUrl().then((u) => setAccessUrl(u ?? null))
@@ -132,19 +141,52 @@ export function SyncPage() {
         ) : (
           <>
             <p className="muted">
-              Create a connection at SimpleFIN Bridge, copy the setup token, and paste it here. The token can only be
-              claimed once. The resulting credentials stay in this browser, not in your budget file; for a budget in
-              Google Drive they are also kept in a hidden folder there, so your other devices connect by themselves.
+              Naught pulls transactions through{' '}
+              <a href={BRIDGE_URL} target="_blank" rel="noreferrer">
+                SimpleFIN Bridge
+              </a>
+              , a service you set up with your banks ($1.50 a month, or $15 a year). The credentials stay in this
+              browser, not in your budget file; for a budget in Google Drive they are also kept in a hidden folder there,
+              so your other devices connect by themselves.
             </p>
+            <ol className="setup-steps">
+              <li>
+                <a href={`${BRIDGE_URL}/auth/login`} target="_blank" rel="noreferrer">
+                  Sign in or create an account
+                </a>{' '}
+                with your email. The sign-in link arrives by email.
+              </li>
+              <li>
+                On <a href={`${BRIDGE_URL}/my-account`} target="_blank" rel="noreferrer">My Account</a>, subscribe, then
+                add each bank under <b>Financial Institutions → New Connection</b>.
+              </li>
+              <li>
+                Still on My Account, under <b>Apps</b>, click <b>New Connection</b>, name it “Naught”, and click{' '}
+                <b>Create Setup Token</b>.
+              </li>
+              <li>Copy the token and paste it below. It can only be claimed once.</li>
+            </ol>
             <input
               style={{ width: '100%' }}
-              placeholder="Setup token (or an access URL)"
+              placeholder="Paste the setup token here"
               value={token}
               onChange={(e) => setToken(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && parsed) connect()
+              }}
             />
+            <p className="muted small">
+              {!token.trim()
+                ? '\u00a0'
+                : !parsed
+                  ? 'That does not look like a setup token. It is a long block of letters and numbers from SimpleFIN Bridge.'
+                  : parsed.kind === 'claim'
+                    ? 'Setup token recognized.'
+                    : 'Access URL recognized. It will be used as-is.'}
+            </p>
             <p>
-              <button onClick={connect} disabled={busy || !token.trim()}>
-                Connect
+              <button onClick={connect} disabled={busy || !parsed}>
+                {busy ? 'Connecting…' : 'Connect'}
               </button>
             </p>
           </>
