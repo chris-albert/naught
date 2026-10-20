@@ -6,8 +6,9 @@ import { sinceFirstActivity } from '../model/ledger'
 import { recurringPayees, reserveHealth, targetAdherence, topPayees, type RecurringPayee, type TargetVerdict } from '../model/insights'
 import { formatCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
+import { buildSubscriptionPrompt } from '../model/subscriptionPrompt'
 import { trendPath } from '../model/trend'
-import { INCOME_CATEGORY_ID, type Cents } from '../model/types'
+import { INCOME_CATEGORY_ID, type BudgetFile, type Cents } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 
 const RANGES = [12, 24]
@@ -68,6 +69,7 @@ export function InsightsPage() {
               <strong>{recurring.count}</strong>
             </div>
           </div>
+          <AnalyzeRow file={file} today={today} />
           {(priceChanges.length > 0 || started.length > 0 || stopped.length > 0) && (
             <div className="insight-highlights">
               {priceChanges.length > 0 && (
@@ -297,6 +299,62 @@ export function InsightsPage() {
         </section>
       </div>
     </>
+  )
+}
+
+/** Longest URL we trust a chat site to accept as a prefilled prompt; past that the prompt goes via the clipboard. */
+const MAX_PROMPT_URL = 8000
+
+const CHATS = {
+  claude: { label: 'Claude', url: 'https://claude.ai/new', param: 'q' },
+  chatgpt: { label: 'ChatGPT', url: 'https://chatgpt.com/', param: 'q' },
+}
+
+/**
+ * Hands the recurring list to the person's own chat assistant, in a new tab, so it can tell
+ * subscriptions from habits and name the annual renewals. No key, no server: the prompt is
+ * built here and either prefilled through the URL or copied for pasting when too long.
+ */
+function AnalyzeRow({ file, today }: { file: BudgetFile; today: string }) {
+  const [note, setNote] = useState('')
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      return false
+    }
+  }
+  const open = async (chat: keyof typeof CHATS) => {
+    const prompt = buildSubscriptionPrompt(file, today)
+    const { label, url, param } = CHATS[chat]
+    const withPrompt = `${url}?${param}=${encodeURIComponent(prompt)}`
+    if (withPrompt.length <= MAX_PROMPT_URL) {
+      window.open(withPrompt, '_blank', 'noopener')
+      setNote(`Opened ${label} with the prompt filled in.`)
+    } else {
+      const copied = await copy(prompt)
+      window.open(url, '_blank', 'noopener')
+      setNote(copied ? `The list is long, so the prompt was copied instead: paste it into ${label}.` : 'Could not copy the prompt; use "Copy prompt" and paste it.')
+    }
+  }
+  const copyOnly = async () => {
+    setNote((await copy(buildSubscriptionPrompt(file, today))) ? 'Prompt copied. Paste it into any chat assistant.' : 'Could not reach the clipboard.')
+  }
+  return (
+    <div className="analyze-row">
+      <span className="muted">Ask an AI which of these are subscriptions and when the annual ones renew. Only the payee names, amounts and dates above are sent, to the chat you pick.</span>
+      <button className="secondary" onClick={() => open('claude')}>
+        Open in Claude
+      </button>
+      <button className="secondary" onClick={() => open('chatgpt')}>
+        Open in ChatGPT
+      </button>
+      <button className="secondary" onClick={copyOnly}>
+        Copy prompt
+      </button>
+      {note && <span className="muted">{note}</span>}
+    </div>
   )
 }
 

@@ -374,6 +374,8 @@ input.assigned:focus { border-color: var(--accent); background: var(--panel); bo
 .welcome .brand { font-size: 36px; }
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin: 14px 0; box-shadow: var(--shadow); }
 .card h3 { margin: 0 0 8px; }
+.analyze-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.analyze-row > .muted:first-child { flex: 1 1 100%; }
 
 /* ---------- picker ---------- */
 .picker-button {
