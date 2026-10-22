@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ReportsNav } from '../components/ReportsNav'
 import { currentDate, currentMonth, shortMonth } from '../model/dates'
-import { sinceFirstActivity } from '../model/ledger'
+import { sinceFirstActivity, sum } from '../model/ledger'
 import { recurringPayees, reserveHealth, targetAdherence, topPayees, type RecurringPayee, type TargetVerdict } from '../model/insights'
 import { formatCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
@@ -37,8 +37,12 @@ export function InsightsPage() {
   const priceChanges = recurring.payees.filter((p) => p.priceChange)
   const started = recurring.payees.filter((p) => p.status === 'new')
   const stopped = recurring.payees.filter((p) => p.status === 'stopped')
-  const monthly = recurring.payees.filter((p) => p.cadence === 'monthly')
-  const yearly = recurring.payees.filter((p) => p.cadence === 'yearly')
+  // The tables show what is still charging; what stopped is listed above them.
+  const monthly = recurring.payees.filter((p) => p.cadence === 'monthly' && p.status !== 'stopped')
+  const yearly = recurring.payees.filter((p) => p.cadence === 'yearly' && p.status !== 'stopped')
+  const monthlyTotal = sum(monthly.map((p) => p.priceChange?.to ?? p.amount))
+  const yearlyTotal = sum(yearly.map((p) => p.amount))
+  const yearlyPerMonth = sum(yearly.map((p) => p.monthlyCost))
   const dismissed = file.notRecurring ?? []
 
   return (
@@ -140,7 +144,7 @@ export function InsightsPage() {
               </thead>
               <tbody>
                 {monthly.map((p) => (
-                  <tr key={p.payee} className={p.status === 'stopped' ? 'insight-stopped' : ''}>
+                  <tr key={p.payee}>
                     <td>
                       <PayeeLink payee={p.payee} />
                     </td>
@@ -158,6 +162,13 @@ export function InsightsPage() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="total-row">
+                  <th colSpan={2}>Total per month</th>
+                  <td className="num">{formatCents(monthlyTotal)}</td>
+                  <td colSpan={3}></td>
+                </tr>
+              </tfoot>
             </table>
           )}
           <h4>Yearly</h4>
@@ -179,7 +190,7 @@ export function InsightsPage() {
               </thead>
               <tbody>
                 {yearly.map((p) => (
-                  <tr key={p.payee} className={p.status === 'stopped' ? 'insight-stopped' : ''}>
+                  <tr key={p.payee}>
                     <td>
                       <PayeeLink payee={p.payee} />
                     </td>
@@ -199,6 +210,14 @@ export function InsightsPage() {
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="total-row">
+                  <th colSpan={2}>Total per year</th>
+                  <td className="num">{formatCents(yearlyTotal)}</td>
+                  <td className="num">{formatCents(yearlyPerMonth)}</td>
+                  <td colSpan={4}></td>
+                </tr>
+              </tfoot>
             </table>
           )}
           {dismissed.length > 0 && (
