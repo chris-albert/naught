@@ -848,7 +848,8 @@ kbd { font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--
 .insight-highlights .movers { grid-template-columns: 1fr; }
 .insight-table td a:hover { color: var(--accent); }
 .insight-table .count { font-size: 11px; }
-.insight-table tr.insight-stopped td { color: var(--muted); }
+.insight-table .total-row th { text-align: left; }
+.insight-table .total-row td, .insight-table .total-row th { background: var(--panel-2); font-weight: 600; }
 .recurring > h4 { margin: 14px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
 .dismissed-payees { margin: 10px 0 0; font-size: 12px; }
 .dismissed-payees button.link { padding: 0 4px; font-size: 12px; }
