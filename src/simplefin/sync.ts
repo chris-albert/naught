@@ -1,4 +1,4 @@
-import type { Account, AccountType, BudgetFile, Cents, Transaction } from '../model/types'
+import type { Account, AccountType, BudgetFile, Cents, SyncRun, Transaction } from '../model/types'
 import { INCOME_CATEGORY_ID } from '../model/types'
 import { categoryForPayee } from '../model/payeeRules'
 import { isSplit } from '../model/splits'
@@ -18,6 +18,8 @@ const MATCH_WINDOW_DAYS = 10
  * charge.
  */
 const REPOST_TOLERANCE = 0.3
+/** How many past syncs the file remembers. */
+const SYNC_RUNS_KEPT = 50
 
 export interface SyncStats {
   added: number
@@ -29,6 +31,16 @@ export interface SyncStats {
   /** Of `added`, how many a payee rule categorized. */
   categorized: number
 }
+
+/** The counts of a recorded sync. */
+export const syncStats = (run: SyncRun): SyncStats => ({
+  added: run.added.length,
+  matched: run.matched.length,
+  updated: run.updated.length,
+  unchanged: run.unchanged,
+  removed: run.removed,
+  categorized: run.categorized.length,
+})
 
 export interface MergeOptions {
   /** Accounts created during this sync; they get a starting balance. */
@@ -91,19 +103,25 @@ export function createLinkedAccount(sfin: SimplefinAccount, type: AccountType, o
  *
  * Accounts listed in `newAccountIds` get a "Starting Balance" transaction so their
  * balance equals the bank's, since the bank only sends a window of history.
+ *
+ * The run is appended to `file.syncRuns` (the latest SYNC_RUNS_KEPT are kept) and returned.
  */
 export function mergeSimplefin(
   file: BudgetFile,
   accounts: SimplefinAccount[],
   { newAccountIds = new Set(), since, now = new Date() }: MergeOptions = {},
-): { file: BudgetFile; stats: SyncStats } {
-  const stats: SyncStats = { added: 0, matched: 0, updated: 0, unchanged: 0, removed: 0, categorized: 0 }
+): { file: BudgetFile; stats: SyncStats; run: SyncRun } {
+  const addedIds = new Set<string>()
+  const categorizedIds = new Set<string>()
+  const matchedIds = new Set<string>()
+  const updatedIds = new Set<string>()
+  let unchanged = 0
+  let removed = 0
   let transactions = file.transactions.map((t) => ({ ...t }))
   const byImportId = new Map<string, Transaction>()
   for (const t of transactions) if (t.importId) byImportId.set(t.importId, t)
   const seen = new Set<string>()
   const ignored = new Set(file.ignoredImportIds)
-  const addedIds = new Set<string>()
   const syncedAccountIds = new Set<string>()
 
   for (const sfin of accounts) {
@@ -127,8 +145,8 @@ export function mergeSimplefin(
           existing.date = date
           existing.amount = amount
           if (existing.cleared === 'uncleared') existing.cleared = cleared
-          stats.updated++
-        } else stats.unchanged++
+          updatedIds.add(existing.id)
+        } else unchanged++
         continue
       }
 
@@ -154,7 +172,7 @@ export function mergeSimplefin(
         candidate.importPayee = payee
         if (candidate.cleared === 'uncleared') candidate.cleared = cleared
         byImportId.set(importId, candidate)
-        stats.matched++
+        matchedIds.add(candidate.id)
         continue
       }
 
@@ -175,8 +193,7 @@ export function mergeSimplefin(
       transactions.push(added)
       byImportId.set(importId, added)
       addedIds.add(added.id)
-      stats.added++
-      if (categoryId) stats.categorized++
+      if (categoryId) categorizedIds.add(added.id)
     }
 
     if (newAccountIds.has(account.id)) {
@@ -185,7 +202,7 @@ export function mergeSimplefin(
       const diff = bankBalance - mine.reduce((s, t) => s + t.amount, 0)
       if (diff !== 0) {
         const earliest = mine.reduce((d, t) => (t.date < d ? t.date : d), epochToIsoDate(sfin['balance-date'] || now.getTime() / 1000))
-        transactions.push({
+        const starting: Transaction = {
           id: crypto.randomUUID(),
           accountId: account.id,
           date: new Date(Date.parse(earliest) - 86_400_000).toISOString().slice(0, 10),
@@ -195,8 +212,9 @@ export function mergeSimplefin(
           amount: diff,
           cleared: 'reconciled',
           transferAccountId: null,
-        })
-        stats.added++
+        }
+        transactions.push(starting)
+        addedIds.add(starting.id)
       }
     }
   }
@@ -233,12 +251,12 @@ export function mergeSimplefin(
       pending.date = p.date
       pending.cleared = p.cleared
       dropped.add(p.id)
-      stats.matched++
-      if (addedIds.has(p.id)) stats.added--
+      matchedIds.add(pending.id)
+      addedIds.delete(p.id)
     }
     for (const t of vanished) if (!taken.has(t.id)) dropped.add(t.id)
     transactions = transactions.filter((t) => !dropped.has(t.id))
-    stats.removed = vanished.filter((t) => !taken.has(t.id)).length
+    removed = vanished.filter((t) => !taken.has(t.id)).length
   }
 
   // Remember what the bank says each linked account holds, for reconciliation.
@@ -256,7 +274,18 @@ export function mergeSimplefin(
   })
 
   transactions.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  return { file: { ...file, accounts: updatedAccounts, transactions, simplefinLastSync: now.toISOString() }, stats }
+  const run: SyncRun = {
+    id: crypto.randomUUID(),
+    at: now.toISOString(),
+    added: [...addedIds],
+    categorized: [...categorizedIds],
+    matched: [...matchedIds],
+    updated: [...updatedIds],
+    unchanged,
+    removed,
+  }
+  const syncRuns = [...(file.syncRuns ?? []), run].slice(-SYNC_RUNS_KEPT)
+  return { file: { ...file, accounts: updatedAccounts, transactions, simplefinLastSync: now.toISOString(), syncRuns }, stats: syncStats(run), run }
 }
 
 export type { SimplefinTransaction }

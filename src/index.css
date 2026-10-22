@@ -557,6 +557,17 @@ input.move-amount { flex: 1; text-align: right; }
 button.danger:not(.link) { background: linear-gradient(135deg, #e05252 0%, #f0883e 100%); box-shadow: 0 2px 8px rgba(214, 69, 69, 0.35); }
 button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); }
 
+/* ---------- sync page: past runs ---------- */
+.sync-runs { list-style: none; margin: 0; padding: 0; }
+.sync-runs > li { border-top: 1px solid var(--border); }
+.sync-runs > li:first-child { border-top: none; }
+.sync-runs .sync-run-head { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 8px 4px; }
+.sync-runs .sync-run-head .chevron { display: inline-block; width: 12px; color: var(--muted); transition: transform 0.15s ease; transform: rotate(-90deg); }
+.sync-runs > li.open .sync-run-head .chevron { transform: none; }
+.sync-runs .sync-run-head .muted { font-weight: 400; }
+.sync-runs .grid { margin: 4px 0 12px; }
+.sync-runs .grid td a { color: inherit; }
+
 /* ---------- sidebar sync button ---------- */
 .nav-with-action { display: flex; align-items: center; gap: 4px; }
 .nav-with-action a { flex: 1; }

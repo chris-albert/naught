@@ -7,6 +7,7 @@ import { isUncategorized } from '../model/splits'
 import { saveNow, useBudget, type SaveState } from '../store/budgetStore'
 import { getAccessUrl } from '../simplefin/client'
 import { quickSync } from '../simplefin/quickSync'
+import { syncStats } from '../simplefin/sync'
 import { downloadBackup } from '../storage/fileStore'
 import { getTheme, nextTheme, setTheme } from '../theme'
 
@@ -45,7 +46,7 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
     setSyncing(true)
     setSyncMessage(null)
     try {
-      const s = await quickSync()
+      const s = syncStats(await quickSync())
       const parts = [s.added && `${s.added} added`, s.categorized && `${s.categorized} auto-categorized`, s.matched && `${s.matched} matched`, s.updated && `${s.updated} updated`, s.removed && `${s.removed} removed`].filter(Boolean)
       setSyncMessage({ text: parts.length ? parts.join(', ') : 'Up to date', error: false })
     } catch (e) {

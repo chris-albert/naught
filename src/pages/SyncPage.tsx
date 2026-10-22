@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Picker } from '../components/Picker'
 import { formatCents } from '../model/money'
-import type { AccountType } from '../model/types'
+import { isSplit, isUncategorized } from '../model/splits'
+import { INCOME_CATEGORY_ID, type AccountType, type BudgetFile, type SyncRun, type Transaction } from '../model/types'
 import {
   BRIDGE_URL,
   claimSetupToken,
@@ -11,6 +13,7 @@ import {
   parseSetupInput,
   type SimplefinAccount,
 } from '../simplefin/client'
+import { quickSync } from '../simplefin/quickSync'
 import { createLinkedAccount, mergeSimplefin, parseDecimal, type SyncStats } from '../simplefin/sync'
 import { useBudget } from '../store/budgetStore'
 
@@ -36,6 +39,7 @@ export function SyncPage() {
   const update = useBudget((s) => s.update)
   const [accessUrl, setAccessUrl] = useState<string | null>(null)
   const [token, setToken] = useState('')
+  const [syncDays, setSyncDays] = useState(30)
   const [days, setDays] = useState(90)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,7 +47,11 @@ export function SyncPage() {
   const [since, setSince] = useState<string>('')
   const [choices, setChoices] = useState<Record<string, LinkChoice>>({})
   const [stats, setStats] = useState<SyncStats | null>(null)
+  /** The past run whose transactions are shown; a sync just done opens itself. */
+  const [openRun, setOpenRun] = useState<string | null>(null)
   const parsed = parseSetupInput(token)
+  const linked = file.accounts.filter((a) => a.simplefinId && !a.closed)
+  const runs = [...(file.syncRuns ?? [])].reverse()
 
   useEffect(() => {
     getAccessUrl().then((u) => setAccessUrl(u ?? null))
@@ -72,6 +80,12 @@ export function SyncPage() {
       await clearAccessUrl()
       setAccessUrl(null)
       setFetched(null)
+    })
+
+  const syncNow = () =>
+    run(async () => {
+      const done = await quickSync(syncDays)
+      setOpenRun(done.id)
     })
 
   const fetchNow = () =>
@@ -114,6 +128,7 @@ export function SyncPage() {
       const linkedIds = new Set(fetched.filter((s) => choices[s.id]?.target !== SKIP).map((s) => s.id))
       const merged = mergeSimplefin({ ...current, accounts }, fetched.filter((s) => linkedIds.has(s.id)), { newAccountIds: newIds, since })
       setStats(merged.stats)
+      setOpenRun(merged.run.id)
       return merged.file
     }, 'bank import')
   }
@@ -177,7 +192,7 @@ export function SyncPage() {
             />
             <p className="muted small">
               {!token.trim()
-                ? '\u00a0'
+                ? ' '
                 : !parsed
                   ? 'That does not look like a setup token. It is a long block of letters and numbers from SimpleFIN Bridge.'
                   : parsed.kind === 'claim'
@@ -193,11 +208,49 @@ export function SyncPage() {
         )}
       </section>
 
+      {accessUrl && linked.length > 0 && (
+        <section className="card">
+          <h3>Sync</h3>
+          <p className="muted">
+            Pulls recent transactions for {linked.length === 1 ? 'the linked account' : `the ${linked.length} linked accounts`} and
+            imports what is new, the same as ↻ in the sidebar. The run then appears below with every transaction it
+            brought in, including the ones payee rules categorized.
+          </p>
+          <label>
+            Last{' '}
+            <input type="number" min={1} max={365} value={syncDays} onChange={(e) => setSyncDays(Number(e.target.value))} style={{ width: 70 }} />{' '}
+            days
+          </label>{' '}
+          <button onClick={syncNow} disabled={busy}>
+            {busy ? 'Working…' : 'Sync now'}
+          </button>
+        </section>
+      )}
+
+      {runs.length > 0 && (
+        <section className="card">
+          <h3>Syncs</h3>
+          <ul className="sync-runs">
+            {runs.map((r) => (
+              <li key={r.id} className={openRun === r.id ? 'open' : ''}>
+                <button className="link sync-run-head" onClick={() => setOpenRun(openRun === r.id ? null : r.id)}>
+                  <span className="chevron">▾</span>
+                  <span>{new Date(r.at).toLocaleString()}</span>
+                  <span className="muted">{describeRun(r)}</span>
+                </button>
+                {openRun === r.id && <RunTransactions file={file} run={r} />}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {accessUrl && (
         <section className="card">
-          <h3>Fetch transactions</h3>
+          <h3>Link bank accounts</h3>
           <p className="muted">
-            SimpleFIN allows roughly 24 requests a day, so fetch once, review the links below, then import. Pending
+            To link a new bank account, or change which budget account one feeds, fetch the list of accounts, choose the
+            links, then import. SimpleFIN allows roughly 24 requests a day, and each fetch or sync is one. Pending
             transactions are imported as uncleared so you can categorize them early; they clear when they post.
           </p>
           <label>
@@ -269,7 +322,7 @@ export function SyncPage() {
           {stats && (
             <p className="pos">
               Imported: {stats.added} added{stats.categorized > 0 ? ` (${stats.categorized} categorized by payee rules)` : ''}, {stats.matched} matched to existing, {stats.updated} updated, {stats.unchanged}{' '}
-              already present{stats.removed > 0 ? `, ${stats.removed} stale pending removed` : ''}.
+              already present{stats.removed > 0 ? `, ${stats.removed} stale pending removed` : ''}. The transactions are listed under Syncs above.
             </p>
           )}
         </section>
@@ -277,6 +330,99 @@ export function SyncPage() {
 
       {error && <p className="neg">{error}</p>}
       </div>
+    </>
+  )
+}
+
+/** "3 added · 1 auto-categorized · 2 matched · 40 unchanged", leaving out what did not happen. */
+function describeRun(r: SyncRun): string {
+  return [
+    `${r.added.length} added`,
+    r.categorized.length > 0 && `${r.categorized.length} auto-categorized`,
+    r.matched.length > 0 && `${r.matched.length} matched`,
+    r.updated.length > 0 && `${r.updated.length} updated`,
+    `${r.unchanged} unchanged`,
+    r.removed > 0 && `${r.removed} removed`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/** The transactions a past sync added, matched or updated, as they are now. */
+function RunTransactions({ file, run }: { file: BudgetFile; run: SyncRun }) {
+  const byId = new Map(file.transactions.map((t) => [t.id, t]))
+  const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
+  const categoryName = new Map(file.categories.map((c) => [c.id, c.name]))
+  const categorized = new Set(run.categorized)
+  const byDate = (a: Transaction, b: Transaction) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)
+  const sections = [
+    { title: 'Added', ids: run.added },
+    { title: 'Matched or updated', ids: [...run.matched, ...run.updated] },
+  ]
+    .map((s) => ({ ...s, rows: s.ids.map((id) => byId.get(id)).filter((t): t is Transaction => !!t).sort(byDate) }))
+    .filter((s) => s.rows.length > 0)
+  const missing = run.added.length + run.matched.length + run.updated.length - sections.reduce((n, s) => n + s.rows.length, 0)
+
+  const category = (t: Transaction) =>
+    t.transferAccountId ? (
+      <span className="muted">Transfer: {accountName.get(t.transferAccountId) ?? '?'}</span>
+    ) : isSplit(t) ? (
+      <span className="muted">Split</span>
+    ) : t.categoryId === INCOME_CATEGORY_ID ? (
+      'Income'
+    ) : t.categoryId ? (
+      <>
+        {categoryName.get(t.categoryId) ?? '?'}
+        {categorized.has(t.id) && <span className="muted"> · by rule</span>}
+      </>
+    ) : (
+      <span className="muted">Uncategorized</span>
+    )
+
+  return (
+    <>
+      {sections.length === 0 ? (
+        <p className="muted">Nothing changed.</p>
+      ) : (
+        <table className="grid">
+          <thead>
+            <tr>
+              <th>Account</th>
+              <th>Date</th>
+              <th>Payee</th>
+              <th>Category</th>
+              <th className="num">Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          {sections.map((s) => (
+            <tbody key={s.title}>
+              <tr className="section-row">
+                <th colSpan={6}>
+                  {s.title} · {s.rows.length}
+                </th>
+              </tr>
+              {s.rows.map((t) => (
+                <tr key={t.id} className={isUncategorized(t) ? 'uncategorized' : ''}>
+                  <td>
+                    <Link to={`/app/accounts/${t.accountId}`}>{accountName.get(t.accountId) ?? '?'}</Link>
+                  </td>
+                  <td>{t.date}</td>
+                  <td>{t.payee || <span className="muted">No payee</span>}</td>
+                  <td>{category(t)}</td>
+                  <td className={`num ${t.amount < 0 ? 'neg' : 'pos'}`}>{formatCents(t.amount)}</td>
+                  <td className="muted">{t.cleared === 'reconciled' ? '🔒' : t.cleared === 'cleared' ? '✓' : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          ))}
+        </table>
+      )}
+      {missing > 0 && (
+        <p className="muted small">
+          {missing} of these {missing === 1 ? 'has' : 'have'} since been deleted.
+        </p>
+      )}
     </>
   )
 }
