@@ -1,9 +1,10 @@
+import type { SyncRun } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { fetchAccounts, getAccessUrl } from './client'
-import { mergeSimplefin, type SyncStats } from './sync'
+import { mergeSimplefin } from './sync'
 
-/** Fetch and import for every already-linked account, no questions asked. */
-export async function quickSync(days = 30): Promise<SyncStats> {
+/** Fetch and import for every already-linked account, no questions asked. Returns the recorded run. */
+export async function quickSync(days = 30): Promise<SyncRun> {
   const accessUrl = await getAccessUrl()
   if (!accessUrl) throw new Error('SimpleFIN is not connected yet')
   const file = useBudget.getState().file
@@ -15,15 +16,15 @@ export async function quickSync(days = 30): Promise<SyncStats> {
   const result = await fetchAccounts(accessUrl, { startDate, pending: true })
   if (result.errors.length) throw new Error(result.errors.join('; '))
 
-  let stats: SyncStats | undefined
+  let run: SyncRun | undefined
   useBudget.getState().update((current) => {
     const merged = mergeSimplefin(
       current,
       result.accounts.filter((a) => linkedIds.has(a.id)),
       { since: startDate.toISOString().slice(0, 10) },
     )
-    stats = merged.stats
+    run = merged.run
     return merged.file
   }, 'bank sync')
-  return stats!
+  return run!
 }

@@ -81,6 +81,24 @@ export interface Transaction {
   importPayee?: string
 }
 
+/** What one bank sync changed, so the Sync page can list past runs and the transactions each one touched. */
+export interface SyncRun {
+  id: string
+  /** ISO timestamp */
+  at: string
+  /** Ids of the transactions the run inserted. */
+  added: string[]
+  /** Of `added`, the ones a payee rule categorized. */
+  categorized: string[]
+  /** Existing transactions the run paired with a bank transaction. */
+  matched: string[]
+  /** Already-imported transactions whose date, amount or cleared state the bank changed. */
+  updated: string[]
+  unchanged: number
+  /** Stale pending rows from earlier imports that were dropped. */
+  removed: number
+}
+
 /** Virtual category id for income ("Ready to Assign" in YNAB). */
 export const INCOME_CATEGORY_ID = 'income'
 
@@ -98,6 +116,8 @@ export interface BudgetFile {
   assigned: Record<MonthKey, Record<string, Cents>>
   /** ISO timestamp of the last successful SimpleFIN import. */
   simplefinLastSync?: string
+  /** The most recent bank syncs, oldest first. */
+  syncRuns?: SyncRun[]
   /** payeeRules[payee] = category to give uncategorized transactions from that payee. */
   payeeRules?: Record<string, string>
   /** Import ids of bank transactions the user deleted; sync does not bring them back. */

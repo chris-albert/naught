@@ -78,7 +78,11 @@ Early skeleton. Working today:
   fetch, link bank accounts to budget accounts (or create them), import. Pending transactions are skipped
   (banks change their id and amount when they post). Posted ones are
   de-duplicated by bank id and by same-amount-within-10-days against manually
-  entered ones. The SimpleFIN credentials live in the browser's IndexedDB, not
+  entered ones. Once accounts are linked, "Sync now" on the page (or ↻ in the
+  sidebar) pulls and imports in one step. Every sync is recorded in the file,
+  and the page lists the past ones with their counts; each opens to the
+  transactions it added (including the ones payee rules categorized), matched
+  or updated. The SimpleFIN credentials live in the browser's IndexedDB, not
   in the file. For a budget in Google Drive they are also copied to the app's
   hidden Drive folder (`drive.appdata`), so other devices signed in to the
   same Google account connect without a new token; disconnecting on one

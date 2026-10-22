@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { emptyBudget, INCOME_CATEGORY_ID, type BudgetFile, type Transaction } from '../model/types'
 import type { SimplefinAccount } from './client'
-import { createLinkedAccount, epochToIsoDate, mergeSimplefin, parseDecimal } from './sync'
+import { createLinkedAccount, epochToIsoDate, mergeSimplefin, parseDecimal, syncStats } from './sync'
 
 const day = (iso: string) => Math.floor(Date.parse(iso) / 1000)
 
@@ -173,6 +173,58 @@ describe('mergeSimplefin', () => {
     expect(stats).toMatchObject({ added: 1, matched: 1, removed: 0 })
     expect(file.transactions.find((t) => t.id === 'held')).toMatchObject({ cleared: 'cleared', importId: 'sfin:sf-1:q', categoryId: 'dining', date: '2026-09-11' })
     expect(file.transactions.find((t) => t.importId === 'sfin:sf-1:other')).toMatchObject({ cleared: 'uncleared', categoryId: null })
+  })
+
+  describe('recorded run', () => {
+    it('lists the transactions it added, categorized, matched and updated, and keeps the run in the file', () => {
+      const f = fileWith([
+        txn({ id: 'manual', date: '2026-09-09', amount: -500 }),
+        txn({ id: 'pending', date: '2026-09-10', amount: -1234, importId: 'sfin:sf-1:a', cleared: 'uncleared' }),
+        txn({ id: 'same', date: '2026-09-08', amount: -700, importId: 'sfin:sf-1:c' }),
+      ])
+      f.payeeRules = { Coffee: 'dining' }
+      const { file, stats, run } = mergeSimplefin(
+        f,
+        [
+          bank({
+            transactions: [
+              { id: 'a', posted: day('2026-09-10'), amount: '-12.34', description: 'posted now' },
+              { id: 'b', posted: day('2026-09-09'), amount: '-5.00', description: 'MANUAL' },
+              { id: 'c', posted: day('2026-09-08'), amount: '-7.00', description: 'same' },
+              { id: 'd', posted: day('2026-09-11'), amount: '-3.00', description: 'COFFEE', payee: 'Coffee' },
+              { id: 'e', posted: day('2026-09-12'), amount: '-4.00', description: 'NEW' },
+            ],
+          }),
+        ],
+        { now },
+      )
+      const coffee = file.transactions.find((t) => t.payee === 'Coffee')!
+      const fresh = file.transactions.find((t) => t.payee === 'NEW')!
+      expect(run).toMatchObject({ at: now.toISOString(), categorized: [coffee.id], matched: ['manual'], updated: ['pending'], unchanged: 1, removed: 0 })
+      expect(new Set(run.added)).toEqual(new Set([coffee.id, fresh.id]))
+      expect(stats).toEqual(syncStats(run))
+      expect(stats).toEqual({ added: 2, matched: 1, updated: 1, unchanged: 1, removed: 0, categorized: 1 })
+      expect(file.syncRuns).toEqual([run])
+    })
+
+    it('counts a pending row that adopted a posted one as matched, not added', () => {
+      const { file, run } = mergeSimplefin(
+        fileWith([txn({ id: 'held', date: '2026-09-06', amount: -2500, importId: 'sfin:sf-1:old', cleared: 'uncleared', categoryId: 'dining' })]),
+        [bank({ transactions: [{ id: 'new', posted: day('2026-09-08'), amount: '-27.50', description: 'Cafe Roma' }] })],
+        { since: '2026-08-20', now },
+      )
+      expect(run).toMatchObject({ added: [], matched: ['held'], removed: 0 })
+      expect(file.transactions.map((t) => t.id)).toEqual(['held'])
+    })
+
+    it('keeps only the latest fifty runs', () => {
+      const f = fileWith()
+      f.syncRuns = Array.from({ length: 50 }, (_, i) => ({ id: `r${i}`, at: now.toISOString(), added: [], categorized: [], matched: [], updated: [], unchanged: 0, removed: 0 }))
+      const { file, run } = mergeSimplefin(f, [bank()], { now })
+      expect(file.syncRuns).toHaveLength(50)
+      expect(file.syncRuns![0].id).toBe('r1')
+      expect(file.syncRuns![49]).toBe(run)
+    })
   })
 
   it('removes previously imported pending rows the bank no longer sends within the window', () => {
