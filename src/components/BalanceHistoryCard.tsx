@@ -24,9 +24,15 @@ export function RangePicker({ days, onChange }: { days: number; onChange: (days:
   )
 }
 
-/** One account's balance, change, low and high over the range, with the end-of-day balance line below. */
+/**
+ * One account's balance, change, low and high over the range, with the end-of-day balance line below.
+ * A credit card also shows what was charged in the range and, once the card's cash back rate is set, the estimated reward.
+ */
 export function BalanceHistoryStats({ file, accountId, from, to, days }: { file: BudgetFile; accountId: string; from: string; to: string; days: number }) {
   const history = useMemo(() => balanceHistory(file, accountId, from, to), [file, accountId, from, to])
+  const account = file.accounts.find((a) => a.id === accountId)
+  const credit = account?.type === 'credit'
+  const rate = account?.cashBackRate
   return (
     <>
       <div className="stat-row">
@@ -34,6 +40,8 @@ export function BalanceHistoryStats({ file, accountId, from, to, days }: { file:
         <Stat label={`Change · ${days} days`} value={history.change} signed />
         <Stat label="Lowest" value={history.low} />
         <Stat label="Highest" value={history.high} />
+        {credit && <Stat label={`Spent · ${days} days`} value={history.spent} />}
+        {credit && rate !== undefined && <Stat label={`Est. cash back · ${rate}%`} value={Math.round((history.spent * rate) / 100)} />}
       </div>
       <BalanceLine points={history.points} />
     </>

@@ -11,7 +11,7 @@ function fixture(): BudgetFile {
   return f
 }
 
-const txn = (p: Pick<Transaction, 'date' | 'amount' | 'accountId'>): Transaction => ({
+const txn = (p: Pick<Transaction, 'date' | 'amount' | 'accountId'> & Partial<Transaction>): Transaction => ({
   id: Math.random().toString(36).slice(2),
   payee: '',
   categoryId: null,
@@ -61,6 +61,21 @@ describe('balanceHistory', () => {
     expect(h.points.map((p) => p.balance)).toEqual([-30000, 0])
     expect(h.low).toBe(-30000)
     expect(h.high).toBe(0)
+  })
+
+  it('totals charges less refunds in the range, leaving out payments and earlier history', () => {
+    const f = fixture()
+    f.transactions.push(
+      txn({ accountId: 'visa', date: '2026-02-20', amount: -50000 }),
+      txn({ accountId: 'visa', date: '2026-03-01', amount: -12000 }),
+      txn({ accountId: 'visa', date: '2026-03-02', amount: 2000 }),
+      txn({ accountId: 'visa', date: '2026-03-03', amount: 60000, transferAccountId: 'chk' }),
+      txn({ accountId: 'visa', date: '2026-03-04', amount: -3000 }),
+      txn({ accountId: 'visa', date: '2026-03-06', amount: -99999 }),
+    )
+    const h = balanceHistory(f, 'visa', '2026-03-01', '2026-03-05')
+    expect(h.spent).toBe(13000)
+    expect(balanceHistory(fixture(), 'visa', '2026-03-01', '2026-03-02').spent).toBe(0)
   })
 
   it('is empty-safe', () => {

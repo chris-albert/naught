@@ -106,6 +106,25 @@ function AccountList() {
           />
         )}
       </td>
+      <td>
+        {a.type === 'credit' && (
+          <input
+            className="inline day"
+            type="number"
+            min={0}
+            step={0.1}
+            placeholder="%"
+            defaultValue={a.cashBackRate ?? ''}
+            onBlur={(e) => {
+              const n = Number(e.target.value)
+              const cashBackRate = e.target.value.trim() !== '' && Number.isFinite(n) && n >= 0 ? n : undefined
+              if (cashBackRate !== a.cashBackRate) updateAccount(a.id, { cashBackRate })
+              else e.target.value = a.cashBackRate?.toString() ?? ''
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        )}
+      </td>
       <td className="num">{formatCents(balance(a.id))}</td>
       <td className="actions">
         <button className="link" title="Move up" onClick={() => moveAccount(a.id, -1)}>
@@ -132,20 +151,21 @@ function AccountList() {
           <th>Type</th>
           <th>Bank link</th>
           <th title="Day of the month the card's statement closes; the balance that day is what gets reported to the credit bureaus.">Statement closes</th>
+          <th title="Percent of card charges earned back, used to estimate rewards on the balance history chart.">Cash back</th>
           <th className="num">Balance</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         <tr className="section-row">
-          <th colSpan={6}>Open · {open.length}</th>
+          <th colSpan={7}>Open · {open.length}</th>
         </tr>
         {open.map(renderRow)}
       </tbody>
       {closed.length > 0 && (
         <tbody>
           <tr className="section-row">
-            <th colSpan={6}>Closed · {closed.length}</th>
+            <th colSpan={7}>Closed · {closed.length}</th>
           </tr>
           {closed.map(renderRow)}
         </tbody>

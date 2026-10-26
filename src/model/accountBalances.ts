@@ -15,6 +15,8 @@ export interface BalanceHistory {
   change: Cents
   low: Cents
   high: Cents
+  /** Charges less refunds dated within the range, as a positive amount. Transfers (card payments) don't count. */
+  spent: Cents
 }
 
 /** The ISO date `delta` days after `isoDate`. */
@@ -40,9 +42,11 @@ export function balanceHistory(file: BudgetFile, accountId: string, from: string
   const days = dayRange(from, to)
   const index = new Map(days.map((d, i) => [d, i]))
   const deltas = days.map(() => 0)
+  let spent = 0
   for (const t of file.transactions) {
     if (t.accountId !== accountId || t.date > to) continue
     deltas[t.date < from ? 0 : index.get(t.date)!] += t.amount
+    if (t.date >= from && !t.transferAccountId) spent -= t.amount
   }
   let running = 0
   const points = days.map((date, i) => ({ date, balance: (running += deltas[i]) }))
@@ -53,5 +57,6 @@ export function balanceHistory(file: BudgetFile, accountId: string, from: string
     change: balances.length ? balances[balances.length - 1] - balances[0] : 0,
     low: balances.length ? Math.min(...balances) : 0,
     high: balances.length ? Math.max(...balances) : 0,
+    spent,
   }
 }
