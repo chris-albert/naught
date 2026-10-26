@@ -28,6 +28,8 @@ export interface Account {
   bankUrl?: string
   /** For credit accounts: day of the month (1–31) the statement closes, which is when the balance is reported to the credit bureaus. */
   statementDay?: number
+  /** For credit accounts: cash back earned on charges, as a percent (2 means 2%). */
+  cashBackRate?: number
 }
 
 export interface CategoryGroup {
