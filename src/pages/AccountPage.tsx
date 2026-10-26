@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AddTransactionForm } from '../components/AddTransactionForm'
+import { BalanceHistoryStats, RangePicker } from '../components/BalanceHistoryCard'
 import { ReconcilePanel } from '../components/ReconcilePanel'
 import { TransactionTable } from '../components/TransactionTable'
+import { addDays } from '../model/accountBalances'
 import { accountBalance } from '../model/budgetMath'
+import { currentDate } from '../model/dates'
 import { formatCents } from '../model/money'
 import { isUncategorized } from '../model/splits'
 import { accountBalancesPath } from './AccountBalancesPage'
@@ -15,6 +18,8 @@ export function AccountPage() {
   const onlyUncategorized = params.get('filter') === 'uncategorized'
   const file = useBudget((s) => s.file)!
   const [adding, setAdding] = useState(false)
+  const [days, setDays] = useState(90)
+  const today = currentDate()
   const account = id ? file.accounts.find((a) => a.id === id) : undefined
   const inScope = account ? file.transactions.filter((t) => t.accountId === account.id) : file.transactions
   const uncategorized = inScope.filter(isUncategorized)
@@ -59,6 +64,15 @@ export function AccountPage() {
         )}
       </header>
       <div className="page-body">
+      {account && (
+        <section className="card">
+          <div className="card-head">
+            <h3>Balance history</h3>
+            <RangePicker days={days} onChange={setDays} />
+          </div>
+          <BalanceHistoryStats file={file} accountId={account.id} from={addDays(today, 1 - days)} to={today} days={days} />
+        </section>
+      )}
       {account && <ReconcilePanel file={file} accountId={account.id} />}
       {account && adding && <AddTransactionForm file={file} accountId={account.id} />}
       <TransactionTable
