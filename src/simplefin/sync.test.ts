@@ -175,6 +175,26 @@ describe('mergeSimplefin', () => {
     expect(file.transactions.find((t) => t.importId === 'sfin:sf-1:other')).toMatchObject({ cleared: 'uncleared', categoryId: null })
   })
 
+  it('gives a pending row to the posted transaction with the same description, not to another charge for the same amount', () => {
+    // Spotify and Disney+ both bill 18.99 two days apart. The bank lists the newer Disney+ first.
+    const existing = fileWith([txn({ id: 'spot', date: '2026-10-19', amount: -1899, payee: 'Spotify', importPayee: 'Spotify', importId: 'sfin:sf-1:pend', cleared: 'uncleared', categoryId: 'music' })])
+    const { file, stats } = mergeSimplefin(
+      existing,
+      [
+        bank({
+          transactions: [
+            { id: 'disney', posted: day('2026-10-21'), amount: '-18.99', description: 'Disney+' },
+            { id: 'spotify', posted: day('2026-10-19'), amount: '-18.99', description: 'Spotify' },
+          ],
+        }),
+      ],
+      { since: '2026-10-01', now },
+    )
+    expect(stats).toMatchObject({ added: 1, matched: 1 })
+    expect(file.transactions.find((t) => t.id === 'spot')).toMatchObject({ importId: 'sfin:sf-1:spotify', payee: 'Spotify', cleared: 'cleared' })
+    expect(file.transactions.find((t) => t.importId === 'sfin:sf-1:disney')).toMatchObject({ payee: 'Disney+', date: '2026-10-21', categoryId: null })
+  })
+
   describe('recorded run', () => {
     it('lists the transactions it added, categorized, matched and updated, and keeps the run in the file', () => {
       const f = fileWith([
