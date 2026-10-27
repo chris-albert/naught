@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { clearApiKey, getApiKey, maskApiKey, parseApiKey, setApiKey } from '../ai/apiKey'
+import { checkApiKey, clearApiKey, getApiKey, maskApiKey, parseApiKey, setApiKey } from '../ai/apiKey'
 
 const CONSOLE_KEYS_URL = 'https://platform.claude.com/settings/keys'
 const CREDITS_URL = 'https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers'
@@ -8,6 +8,8 @@ const CREDITS_URL = 'https://platform.claude.com/docs/en/about-claude/api-credit
 export function AiPage() {
   const [stored, setStored] = useState<string | null | undefined>(undefined)
   const [draft, setDraft] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const parsed = parseApiKey(draft)
 
   useEffect(() => {
@@ -15,10 +17,19 @@ export function AiPage() {
   }, [])
 
   const save = async () => {
-    if (!parsed) return
-    await setApiKey(parsed)
-    setStored(parsed)
-    setDraft('')
+    if (!parsed || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await checkApiKey(parsed)
+      await setApiKey(parsed)
+      setStored(parsed)
+      setDraft('')
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const remove = async () => {
@@ -60,7 +71,7 @@ export function AiPage() {
                   </a>
                   ; otherwise add a few dollars of credit.
                 </li>
-                <li>Paste the key below.</li>
+                <li>Paste the key below. Saving checks it with Anthropic first.</li>
               </ol>
               <input
                 type="password"
@@ -73,12 +84,12 @@ export function AiPage() {
                   if (e.key === 'Enter' && parsed) save()
                 }}
               />
-              <p className="muted small">
-                {!draft.trim() ? ' ' : parsed ? 'Key recognized.' : 'That does not look like an Anthropic key. They start with sk-ant-.'}
+              <p className={`small ${error ? 'neg' : 'muted'}`}>
+                {error ?? (!draft.trim() ? ' ' : parsed ? 'Key recognized.' : 'That does not look like an Anthropic key. They start with sk-ant-.')}
               </p>
               <p>
-                <button onClick={save} disabled={!parsed}>
-                  Save
+                <button onClick={save} disabled={!parsed || busy}>
+                  {busy ? 'Checking…' : 'Save'}
                 </button>
               </p>
             </>

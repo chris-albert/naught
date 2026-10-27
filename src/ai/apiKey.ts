@@ -25,3 +25,26 @@ export function maskApiKey(key: string): string {
 export const getApiKey = () => get<string>(API_KEY_KEY)
 export const setApiKey = (key: string) => set(API_KEY_KEY, key)
 export const clearApiKey = () => del(API_KEY_KEY)
+
+/**
+ * Check the key against Anthropic by listing models, which is free and needs
+ * no credit. Resolves when the key is accepted; throws with a short message
+ * otherwise. Only proves the key is real, not that the account can spend.
+ */
+export async function checkApiKey(key: string): Promise<void> {
+  let res: Response
+  try {
+    res = await fetch('https://api.anthropic.com/v1/models', {
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    })
+  } catch {
+    throw new Error('Could not reach Anthropic. Check your connection and try again.')
+  }
+  if (res.ok) return
+  if (res.status === 401) throw new Error('Anthropic rejected the key. Check that it was copied in full.')
+  throw new Error(`Anthropic answered ${res.status}. Try again in a moment.`)
+}
