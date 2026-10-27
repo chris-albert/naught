@@ -96,7 +96,10 @@ export function createLinkedAccount(sfin: SimplefinAccount, type: AccountType, o
  * 1. Same importId already present -> update date/amount/cleared if the bank changed them (pending -> posted).
  * 2. Otherwise the existing transaction in the same account with the same amount and the closest date
  *    within MATCH_WINDOW_DAYS, either entered by hand (no importId) or an imported pending row the bank
- *    stopped sending -> adopt it (set importId, mark cleared if posted).
+ *    stopped sending -> adopt it (set importId, mark cleared if posted). Adoption runs in two passes over
+ *    the account: first only pending rows whose bank description matches (see `samePayee`), then anything
+ *    else by amount and date. Otherwise two charges for the same amount a few days apart (Spotify and
+ *    Disney+ at 18.99) could swap rows depending on the order the bank lists them.
  * 3. Otherwise insert it as a new transaction, categorized by payee rule if one matches.
  *
  * Bank transactions whose id is in `file.ignoredImportIds` (rows the user deleted) are skipped.
@@ -130,6 +133,7 @@ export function mergeSimplefin(
     syncedAccountIds.add(account.id)
 
     const ordered = [...sfin.transactions].sort((a, b) => Number(!!a.pending) - Number(!!b.pending))
+    const unknown: { importId: string; date: string; amount: Cents; cleared: Transaction['cleared']; payee: string; memo: string }[] = []
     for (const bt of ordered) {
       const importId = importIdFor(sfin.id, bt.id)
       if (ignored.has(importId)) continue
@@ -149,33 +153,40 @@ export function mergeSimplefin(
         } else unchanged++
         continue
       }
+      unknown.push({ importId, date, amount, cleared, payee: (bt.payee ?? bt.description ?? '').trim(), memo: bt.memo ?? '' })
+    }
 
+    const adopt = (bt: (typeof unknown)[number], requirePayee: boolean): boolean => {
       let candidate: Transaction | undefined
       let best = MATCH_WINDOW_DAYS + 1
       for (const t of transactions) {
-        if (t.accountId !== account.id || t.amount !== amount) continue
+        if (t.accountId !== account.id || t.amount !== bt.amount) continue
         if (t.importId && !(t.cleared === 'uncleared' && !seen.has(t.importId))) continue
-        const gap = daysBetween(t.date, date)
+        if (requirePayee && !samePayee(t.importPayee, bt.payee)) continue
+        const gap = daysBetween(t.date, bt.date)
         if (gap <= MATCH_WINDOW_DAYS && gap < best) {
           best = gap
           candidate = t
         }
       }
-      const payee = (bt.payee ?? bt.description ?? '').trim()
-      if (candidate) {
-        if (candidate.importId) {
-          // A pending row re-sent under a new id: take the bank's date, as step 1 would.
-          byImportId.delete(candidate.importId)
-          candidate.date = date
-        }
-        candidate.importId = importId
-        candidate.importPayee = payee
-        if (candidate.cleared === 'uncleared') candidate.cleared = cleared
-        byImportId.set(importId, candidate)
-        matchedIds.add(candidate.id)
-        continue
+      if (!candidate) return false
+      if (candidate.importId) {
+        // A pending row re-sent under a new id: take the bank's date, as step 1 would.
+        byImportId.delete(candidate.importId)
+        candidate.date = bt.date
       }
+      candidate.importId = bt.importId
+      candidate.importPayee = bt.payee
+      if (candidate.cleared === 'uncleared') candidate.cleared = bt.cleared
+      byImportId.set(bt.importId, candidate)
+      matchedIds.add(candidate.id)
+      return true
+    }
 
+    const unmatched = unknown.filter((bt) => !adopt(bt, true))
+    for (const bt of unmatched) {
+      if (adopt(bt, false)) continue
+      const { importId, date, amount, cleared, payee } = bt
       const categoryId = categoryForPayee(file, payee)
       const added: Transaction = {
         id: crypto.randomUUID(),
@@ -183,7 +194,7 @@ export function mergeSimplefin(
         date,
         payee,
         categoryId,
-        memo: bt.memo ?? '',
+        memo: bt.memo,
         amount,
         cleared,
         transferAccountId: null,
