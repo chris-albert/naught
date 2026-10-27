@@ -103,9 +103,13 @@ Early skeleton. Working today:
   uncategorized transactions from that payee and future bank imports. Rules
   are listed under Settings → Payee rules, where they can be changed or
   removed. Matching is on the exact payee name.
-- AI settings: Settings → AI takes an Anthropic API key for the AI features
-  to come (see the open issues). The key lives in the browser's IndexedDB,
-  not in the file, and each device needs it pasted once.
+- AI settings: Settings → AI takes an Anthropic API key for the AI features.
+  The key lives in the browser's IndexedDB, not in the file, and each device
+  needs it pasted once. With a key saved, "Review with Claude" on the Insights
+  tab runs the subscription review in the app (Claude Opus, about $0.06 a run)
+  and shows the answer under the button; without one, the prompt can still be
+  opened in Claude or ChatGPT or copied. Only payee names, amounts, dates and
+  category names are sent.
 
 Not yet: adding transactions by hand, AI categorization, credit card payment
 envelopes (see below).
