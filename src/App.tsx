@@ -6,6 +6,7 @@ import { sampleBudget } from './demo/sampleBudget'
 import { AccountBalancesPage } from './pages/AccountBalancesPage'
 import { AccountPage } from './pages/AccountPage'
 import { AccountsPage } from './pages/AccountsPage'
+import { AiPage } from './pages/AiPage'
 import { BudgetPage } from './pages/BudgetPage'
 import { ImportPage } from './pages/ImportPage'
 import { InsightsPage } from './pages/InsightsPage'
@@ -160,6 +161,7 @@ function BudgetApp() {
           <Route path="settings/accounts" element={<AccountsPage />} />
           <Route path="settings/rules" element={<PayeeRulesPage />} />
           <Route path="settings/versions" element={<VersionsPage />} />
+          <Route path="settings/ai" element={<AiPage />} />
           <Route path="*" element={<Navigate to="/app/budget" replace />} />
         </Routes>
       </main>

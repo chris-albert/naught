@@ -97,6 +97,7 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
       <NavLink to="/app/settings/accounts">Manage accounts</NavLink>
       <NavLink to="/app/settings/rules">Payee rules</NavLink>
       {hasVersions && <NavLink to="/app/settings/versions">Version history</NavLink>}
+      <NavLink to="/app/settings/ai">AI</NavLink>
       <div className="nav-with-action">
         <NavLink to="/app/sync">Bank sync</NavLink>
         <button
