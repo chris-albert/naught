@@ -103,6 +103,9 @@ Early skeleton. Working today:
   uncategorized transactions from that payee and future bank imports. Rules
   are listed under Settings → Payee rules, where they can be changed or
   removed. Matching is on the exact payee name.
+- AI settings: Settings → AI takes an Anthropic API key for the AI features
+  to come (see the open issues). The key lives in the browser's IndexedDB,
+  not in the file, and each device needs it pasted once.
 
 Not yet: adding transactions by hand, AI categorization, credit card payment
 envelopes (see below).
