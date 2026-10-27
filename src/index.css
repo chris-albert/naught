@@ -869,3 +869,19 @@ kbd { font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--
 .dismissed-payees button.link { padding: 0 4px; font-size: 12px; }
 .tag.tag-muted { background: var(--panel-2); color: var(--muted); }
 .tag.tag-warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+
+/* ---------- ask ---------- */
+.page-body.ask { display: flex; flex-direction: column; gap: 14px; padding-bottom: 16px; }
+.ask-note { margin: 0; line-height: 1.5; }
+.ask-examples { display: flex; flex-wrap: wrap; gap: 8px; }
+.ask-turn { display: flex; flex-direction: column; gap: 10px; }
+.ask-question { align-self: flex-end; max-width: 80%; padding: 10px 14px; border-radius: 14px 14px 4px 14px; background: var(--accent-soft); white-space: pre-wrap; }
+.ask-answer { align-self: flex-start; max-width: 85%; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; border-radius: 14px 14px 14px 4px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.ask-answer > p { margin: 0; line-height: 1.5; }
+.ask-thinking summary { cursor: pointer; }
+.ask-thinking p { margin: 6px 0 0; font-style: italic; }
+.ask-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.ask-tools code { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.ask-composer { flex: none; display: flex; gap: 10px; align-items: flex-end; padding: 12px 0 20px; border-top: 1px solid var(--border); }
+.ask-composer textarea { flex: 1; resize: none; font: inherit; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text); }
+.ask-composer textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

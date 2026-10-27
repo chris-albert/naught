@@ -7,6 +7,7 @@ import { AccountBalancesPage } from './pages/AccountBalancesPage'
 import { AccountPage } from './pages/AccountPage'
 import { AccountsPage } from './pages/AccountsPage'
 import { AiPage } from './pages/AiPage'
+import { AskPage } from './pages/AskPage'
 import { BudgetPage } from './pages/BudgetPage'
 import { ImportPage } from './pages/ImportPage'
 import { InsightsPage } from './pages/InsightsPage'
@@ -154,6 +155,7 @@ function BudgetApp() {
           <Route path="reports/accounts" element={<AccountBalancesPage />} />
           <Route path="reports/year" element={<YearReviewPage />} />
           <Route path="reports/year/:year" element={<YearReviewPage />} />
+          <Route path="ask" element={<AskPage />} />
           <Route path="accounts" element={<AccountPage />} />
           <Route path="accounts/:id" element={<AccountPage />} />
           <Route path="import" element={<ImportPage />} />

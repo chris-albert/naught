@@ -35,7 +35,7 @@ export async function askClaude(key: string, prompt: string, onText: (piece: str
 }
 
 /** The message Anthropic put in the error body, falling back to the SDK's status line. */
-function apiMessage(e: { message: string; error?: unknown }): string {
+export function apiMessage(e: { message: string; error?: unknown }): string {
   const body = e.error as { error?: { message?: string } } | undefined
   return body?.error?.message ?? e.message
 }
