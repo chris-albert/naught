@@ -379,6 +379,18 @@ input.assigned:focus { border-color: var(--accent); background: var(--panel); bo
 .analyze-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
 .analyze-row > .muted:first-child { flex: 1 1 100%; }
 .analyze-row button svg { width: 15px; height: 15px; vertical-align: -2px; margin-right: 6px; }
+.analyze-row button:disabled { opacity: 0.45; cursor: default; filter: none; }
+.claude-review { flex: 1 1 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2); }
+.claude-review-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+.claude-review-head .muted:first-child { flex: 1 1 320px; }
+.claude-review .neg { margin: 8px 0 0; font-size: 13px; }
+.markdown { overflow-x: auto; }
+.markdown h4 { margin: 14px 0 6px; font-size: 13px; }
+.markdown h4:first-child { margin-top: 0; }
+.markdown p { margin: 6px 0; font-size: 13px; line-height: 1.5; }
+.markdown ul, .markdown ol { margin: 6px 0; padding-left: 22px; font-size: 13px; line-height: 1.5; }
+.markdown .grid { margin: 8px 0; box-shadow: none; }
+.markdown .grid th, .markdown .grid td { white-space: normal; }
 .setup-steps { margin: 0 0 14px; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; line-height: 1.5; }
 .setup-steps a { color: var(--accent); }
 

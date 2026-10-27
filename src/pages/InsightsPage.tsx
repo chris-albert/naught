@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { askClaude } from '../ai/claude'
+import { getApiKey } from '../ai/apiKey'
+import { Markdown } from '../components/Markdown'
 import { ReportsNav } from '../components/ReportsNav'
 import { currentDate, currentMonth, shortMonth } from '../model/dates'
 import { sinceFirstActivity, sum } from '../model/ledger'
@@ -402,13 +405,29 @@ const OPENAI_MARK = (
   </svg>
 )
 
+/** The last answer from Claude and the prompt it was for, kept across tab switches so coming back does not cost another run. */
+let lastReview: { prompt: string; text: string } | null = null
+
+interface Review {
+  text: string
+  error: string | null
+  running: boolean
+}
+
 /**
  * Hands the recurring list to the person's own chat assistant, in a new tab, so it can tell
  * subscriptions from habits and name the annual renewals. No key, no server: the prompt is
  * built here and either prefilled through the URL or copied for pasting when too long.
+ * With an API key saved under Settings → AI, the same prompt can run here and show its answer below.
  */
 function AnalyzeRow({ file, today }: { file: BudgetFile; today: string }) {
   const [note, setNote] = useState('')
+  const [hasKey, setHasKey] = useState(false)
+  const prompt = useMemo(() => buildSubscriptionPrompt(file, today), [file, today])
+  const [review, setReview] = useState<Review | null>(() => (lastReview?.prompt === prompt ? { text: lastReview.text, error: null, running: false } : null))
+  useEffect(() => {
+    getApiKey().then((key) => setHasKey(!!key))
+  }, [])
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -418,7 +437,6 @@ function AnalyzeRow({ file, today }: { file: BudgetFile; today: string }) {
     }
   }
   const open = async (chat: keyof typeof CHATS) => {
-    const prompt = buildSubscriptionPrompt(file, today)
     const { label, url, param } = CHATS[chat]
     const withPrompt = `${url}?${param}=${encodeURIComponent(prompt)}`
     if (withPrompt.length <= MAX_PROMPT_URL) {
@@ -431,7 +449,22 @@ function AnalyzeRow({ file, today }: { file: BudgetFile; today: string }) {
     }
   }
   const copyOnly = async () => {
-    setNote((await copy(buildSubscriptionPrompt(file, today))) ? 'Prompt copied. Paste it into any chat assistant.' : 'Could not reach the clipboard.')
+    setNote((await copy(prompt)) ? 'Prompt copied. Paste it into any chat assistant.' : 'Could not reach the clipboard.')
+  }
+  const runReview = async () => {
+    const key = await getApiKey()
+    if (!key) {
+      setHasKey(false)
+      return
+    }
+    setReview({ text: '', error: null, running: true })
+    try {
+      const text = await askClaude(key, prompt, (piece) => setReview((r) => r && { ...r, text: r.text + piece }))
+      lastReview = { prompt, text }
+      setReview({ text, error: null, running: false })
+    } catch (e) {
+      setReview((r) => ({ text: r?.text ?? '', error: (e as Error).message, running: false }))
+    }
   }
   return (
     <div className="analyze-row">
@@ -445,7 +478,28 @@ function AnalyzeRow({ file, today }: { file: BudgetFile; today: string }) {
       <button className="secondary" onClick={copyOnly}>
         Copy prompt
       </button>
+      {hasKey && (
+        <button className="secondary" onClick={runReview} disabled={review?.running}>
+          {CLAUDE_MARK} Review with Claude
+        </button>
+      )}
       {note && <span className="muted">{note}</span>}
+      {review && (
+        <div className="claude-review">
+          <div className="claude-review-head">
+            <span className="muted">Sent to Anthropic: the payee names, amounts, dates and category names above. Nothing else about the budget.</span>
+            {review.running ? (
+              <span className="muted">{review.text ? 'Claude is writing…' : 'Asking Claude…'}</span>
+            ) : (
+              <button className="secondary" onClick={runReview}>
+                Run again
+              </button>
+            )}
+          </div>
+          {review.text && <Markdown text={review.text} />}
+          {review.error && <p className="neg">{review.error}</p>}
+        </div>
+      )}
     </div>
   )
 }
