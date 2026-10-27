@@ -74,6 +74,7 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
 
       <NavLink to="/app/budget">Budget</NavLink>
       <NavLink to="/app/reports">Reports</NavLink>
+      <NavLink to="/app/ask">Ask</NavLink>
       <NavLink to="/app/accounts" end>
         All accounts
       </NavLink>

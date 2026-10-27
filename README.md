@@ -110,6 +110,12 @@ Early skeleton. Working today:
   and shows the answer under the button; without one, the prompt can still be
   opened in Claude or ChatGPT or copied. Only payee names, amounts, dates and
   category names are sent.
+- Ask: with a key saved, the Ask page is a chat with Claude where every
+  figure comes from tools that run the report functions in the browser
+  (spending by category, transactions, recurring payees, month review, net
+  worth, budget month, categories, accounts). Each answer lists the tools it
+  called. What is sent: your questions and the tables those tools return.
+  The conversation is kept in memory only.
 
 Not yet: adding transactions by hand, AI categorization, credit card payment
 envelopes (see below).
