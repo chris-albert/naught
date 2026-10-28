@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { confirm } from '../components/ConfirmDialog'
 import { Picker } from '../components/Picker'
 import { SimplefinSettings } from '../components/SimplefinSettings'
+import { SettingsNav } from '../components/SettingsNav'
 import { formatCents } from '../model/money'
 import type { Account, AccountType } from '../model/types'
 import { useBudget } from '../store/budgetStore'
@@ -19,7 +20,8 @@ export function AccountsPage() {
   return (
     <>
       <header className="page-header">
-        <h2>Accounts</h2>
+        <h2>Settings</h2>
+        <SettingsNav />
         <span className="muted">The order here is the order in the sidebar.</span>
       </header>
       <div className="page-body">

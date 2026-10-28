@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { checkApiKey, clearApiKey, getApiKey, maskApiKey, parseApiKey, setApiKey } from '../ai/apiKey'
+import { SettingsNav } from '../components/SettingsNav'
 
 const CONSOLE_KEYS_URL = 'https://platform.claude.com/settings/keys'
 const CREDITS_URL = 'https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers'
@@ -40,7 +41,8 @@ export function AiPage() {
   return (
     <>
       <header className="page-header">
-        <h2>AI</h2>
+        <h2>Settings</h2>
+        <SettingsNav />
         <span className="muted">Optional features that use Claude, paid for with your own Anthropic API key.</span>
       </header>
       <div className="page-body">

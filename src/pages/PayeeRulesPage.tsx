@@ -1,4 +1,5 @@
 import { CategoryPicker } from '../components/CategoryPicker'
+import { SettingsNav } from '../components/SettingsNav'
 import { useBudget } from '../store/budgetStore'
 
 export function PayeeRulesPage() {
@@ -10,7 +11,8 @@ export function PayeeRulesPage() {
   return (
     <>
       <header className="page-header">
-        <h2>Payee rules</h2>
+        <h2>Settings</h2>
+        <SettingsNav />
         <span className="muted">Uncategorized transactions from these payees get the category automatically.</span>
       </header>
       <div className="page-body">
