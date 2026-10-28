@@ -110,6 +110,17 @@ Early skeleton. Working today:
   and shows the answer under the button; without one, the prompt can still be
   opened in Claude or ChatGPT or copied. Only payee names, amounts, dates and
   category names are sent.
+- AI categorization: with a key saved, "Suggest categories" on an account page
+  (or on Needs a category) asks Claude for a category for each uncategorized
+  transaction, and every bank sync does the same for the rows it added. Each
+  suggestion sits under its row with a confidence and a one-click accept;
+  "Accept all above 90%" takes the sure ones in one undoable step. Claude also
+  offers a cleaner payee name (`AMZN Mktp US*2K3J` → Amazon) as a separate
+  suggestion. Nothing changes in the file until you accept, accepting offers a
+  payee rule the same as picking by hand, and the sync history marks what
+  Claude categorized. Sent: the payee, memo, amount and account type of the
+  rows, your category names, and about 40 of your past categorized
+  transactions as examples (Claude Opus, about a cent per transaction).
 - Ask: with a key saved, the Ask page is a chat with Claude where every
   figure comes from tools that run the report functions in the browser
   (spending by category, transactions, recurring payees, month review, net
@@ -117,7 +128,7 @@ Early skeleton. Working today:
   called. What is sent: your questions and the tables those tools return.
   The conversation is kept in memory only.
 
-Not yet: adding transactions by hand, AI categorization, credit card payment
+Not yet: adding transactions by hand, credit card payment
 envelopes (see below).
 
 ## Development

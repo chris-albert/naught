@@ -416,6 +416,15 @@ input.assigned:focus { border-color: var(--accent); background: var(--panel); bo
 .grid tr.rule-suggestion button:not(.link) { padding: 4px 10px; font-size: 12px; }
 .grid tr.rule-suggestion button.link { display: inline; color: var(--muted); }
 
+/* ---------- Claude category suggestions ---------- */
+.grid tr.ai-suggestion td { background: color-mix(in srgb, #d97757 10%, var(--panel)); box-shadow: inset 3px 0 0 #d97757; }
+.grid tr.ai-suggestion svg { width: 13px; height: 13px; vertical-align: -2px; margin-right: 6px; }
+.suggest-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, #d97757 10%, var(--panel)); box-shadow: inset 3px 0 0 #d97757; }
+.suggest-bar > span { flex: 1; }
+.suggest-bar svg { width: 15px; height: 15px; vertical-align: -2px; margin-right: 6px; }
+.suggest-bar button:not(.link) { padding: 4px 10px; font-size: 12px; }
+.suggest-bar button.link { display: inline; color: var(--muted); }
+
 /* ---------- uncategorized emphasis ---------- */
 .grid tr.uncategorized { background: linear-gradient(90deg, var(--warn-soft) 0%, color-mix(in srgb, var(--warn-soft) 35%, transparent) 55%, transparent 100%); }
 .grid tr.uncategorized:hover { background: linear-gradient(90deg, color-mix(in srgb, var(--warn) 22%, var(--panel)) 0%, var(--warn-soft) 60%, transparent 100%); }

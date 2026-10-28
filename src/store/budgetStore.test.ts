@@ -71,3 +71,41 @@ describe('undo and redo', () => {
     expect(useBudget.getState().past).toEqual([])
   })
 })
+
+describe('acceptSuggestions', () => {
+  it('categorizes and renames in one undoable step and notes the sync run', () => {
+    const file = emptyBudget('t')
+    file.categories.push({ id: 'cat-food', groupId: 'g', name: 'Food', hidden: false })
+    file.transactions.push(
+      txn({ id: 'a', payee: 'SQ *COFFEE 4421' }),
+      txn({ id: 'b', payee: 'Shop', categoryId: 'cat-other' }),
+      txn({ id: 'c', payee: 'Transfer', transferAccountId: 'sav' }),
+    )
+    file.syncRuns = [{ id: 'run', at: '2026-09-01T00:00:00Z', added: ['a', 'c'], categorized: [], matched: [], updated: [], unchanged: 0, removed: 0 }]
+    useBudget.getState().load(file, null)
+
+    useBudget.getState().acceptSuggestions([
+      { transactionId: 'a', categoryId: 'cat-food', payee: 'Coffee' },
+      { transactionId: 'b', categoryId: 'cat-food' }, // already categorized: left alone
+      { transactionId: 'c', categoryId: 'cat-food', payee: 'X' }, // transfer: left alone
+    ])
+    const byId = (id: string) => useBudget.getState().file!.transactions.find((t) => t.id === id)!
+    expect(byId('a')).toMatchObject({ categoryId: 'cat-food', payee: 'Coffee' })
+    expect(byId('b').categoryId).toBe('cat-other')
+    expect(byId('c')).toMatchObject({ categoryId: null, payee: 'Transfer' })
+    expect(useBudget.getState().file!.syncRuns![0].aiCategorized).toEqual(['a'])
+    expect(useBudget.getState().past.map((e) => e.label)).toEqual(['accept suggestions'])
+
+    useBudget.getState().undo()
+    expect(byId('a')).toMatchObject({ categoryId: null, payee: 'SQ *COFFEE 4421' })
+    expect(useBudget.getState().file!.syncRuns![0].aiCategorized).toBeUndefined()
+  })
+
+  it('is a no-op when nothing applies', () => {
+    const file = emptyBudget('t')
+    file.transactions.push(txn({ id: 'b', categoryId: 'cat-other' }))
+    useBudget.getState().load(file, null)
+    useBudget.getState().acceptSuggestions([{ transactionId: 'b', categoryId: 'cat-food' }, { transactionId: 'missing', payee: 'X' }])
+    expect(useBudget.getState().past).toEqual([])
+  })
+})

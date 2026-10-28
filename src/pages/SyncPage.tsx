@@ -16,6 +16,7 @@ import {
 import { quickSync } from '../simplefin/quickSync'
 import { createLinkedAccount, mergeSimplefin, parseDecimal, type SyncStats } from '../simplefin/sync'
 import { useBudget } from '../store/budgetStore'
+import { suggestForRun } from '../store/suggestionStore'
 
 const CREATE = 'create'
 const SKIP = 'skip'
@@ -86,6 +87,7 @@ export function SyncPage() {
     run(async () => {
       const done = await quickSync(syncDays)
       setOpenRun(done.id)
+      void suggestForRun(done)
     })
 
   const fetchNow = () =>
@@ -109,6 +111,7 @@ export function SyncPage() {
 
   const importNow = () => {
     if (!fetched) return
+    let imported: SyncRun | undefined
     update((current) => {
       let accounts = current.accounts.map((a) => ({ ...a }))
       const newIds = new Set<string>()
@@ -129,8 +132,10 @@ export function SyncPage() {
       const merged = mergeSimplefin({ ...current, accounts }, fetched.filter((s) => linkedIds.has(s.id)), { newAccountIds: newIds, since })
       setStats(merged.stats)
       setOpenRun(merged.run.id)
+      imported = merged.run
       return merged.file
     }, 'bank import')
+    if (imported) void suggestForRun(imported)
   }
 
   const unlinkedAccounts = (sfinId: string) =>
@@ -214,7 +219,9 @@ export function SyncPage() {
           <p className="muted">
             Pulls recent transactions for {linked.length === 1 ? 'the linked account' : `the ${linked.length} linked accounts`} and
             imports what is new, the same as ↻ in the sidebar. The run then appears below with every transaction it
-            brought in, including the ones payee rules categorized.
+            brought in, including the ones payee rules categorized. With an Anthropic key saved under Settings → AI,
+            Claude is then asked to suggest a category for the new ones that have none; the suggestions wait on the
+            account pages and change nothing until accepted.
           </p>
           <label>
             Last{' '}
@@ -339,6 +346,7 @@ function describeRun(r: SyncRun): string {
   return [
     `${r.added.length} added`,
     r.categorized.length > 0 && `${r.categorized.length} auto-categorized`,
+    r.aiCategorized?.length && `${r.aiCategorized.length} by Claude`,
     r.matched.length > 0 && `${r.matched.length} matched`,
     r.updated.length > 0 && `${r.updated.length} updated`,
     `${r.unchanged} unchanged`,
@@ -354,6 +362,7 @@ function RunTransactions({ file, run }: { file: BudgetFile; run: SyncRun }) {
   const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
   const categoryName = new Map(file.categories.map((c) => [c.id, c.name]))
   const categorized = new Set(run.categorized)
+  const byClaude = new Set(run.aiCategorized)
   const byDate = (a: Transaction, b: Transaction) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)
   const sections = [
     { title: 'Added', ids: run.added },
@@ -374,6 +383,7 @@ function RunTransactions({ file, run }: { file: BudgetFile; run: SyncRun }) {
       <>
         {categoryName.get(t.categoryId) ?? '?'}
         {categorized.has(t.id) && <span className="muted"> · by rule</span>}
+        {byClaude.has(t.id) && <span className="muted"> · by Claude</span>}
       </>
     ) : (
       <span className="muted">Uncategorized</span>

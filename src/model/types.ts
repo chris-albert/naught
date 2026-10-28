@@ -92,6 +92,8 @@ export interface SyncRun {
   added: string[]
   /** Of `added`, the ones a payee rule categorized. */
   categorized: string[]
+  /** Of `added`, the ones categorized by accepting a Claude suggestion (see src/ai/categorize.ts). */
+  aiCategorized?: string[]
   /** Existing transactions the run paired with a bank transaction. */
   matched: string[]
   /** Already-imported transactions whose date, amount or cleared state the bank changed. */

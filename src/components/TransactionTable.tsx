@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatCents, parseCents } from '../model/money'
-import { categoryForPayee, uncategorizedFrom } from '../model/payeeRules'
+import { categoryForPayee, needsCategory, uncategorizedFrom } from '../model/payeeRules'
 import { isSplit, isUncategorized, unassigned } from '../model/splits'
 import { INCOME_CATEGORY_ID, type BudgetFile, type Cents, type Split, type Transaction } from '../model/types'
 import { useBudget } from '../store/budgetStore'
+import { useSuggestions } from '../store/suggestionStore'
 import { CategoryPicker } from './CategoryPicker'
+import { CLAUDE_MARK } from './ClaudeMark'
 import { confirm } from './ConfirmDialog'
 import { PayeePicker, usePayeeOptions } from './PayeePicker'
 import type { PickerHandle } from './Picker'
 
 const LIMIT = 500
+/** "Accept all" takes Claude's suggestions at or above this confidence. */
+const ACCEPT_ALL_FROM = 90
 
 export function TransactionTable({
   file,
@@ -30,24 +34,30 @@ export function TransactionTable({
   const deleteTransaction = useBudget((s) => s.deleteTransaction)
   const setPayeeRule = useBudget((s) => s.setPayeeRule)
   const setTransfer = useBudget((s) => s.setTransfer)
+  const acceptSuggestions = useBudget((s) => s.acceptSuggestions)
+  const aiSuggestions = useSuggestions((s) => s.suggestions)
+  const dismissAi = useSuggestions((s) => s.dismiss)
   const accountName = new Map(file.accounts.map((a) => [a.id, a.name]))
   const categoryName = (id: string) => (id === INCOME_CATEGORY_ID ? 'Income' : file.categories.find((c) => c.id === id)?.name ?? '?')
-  // After a category is picked by hand, offer to make it a rule for that payee.
+  // After a category is picked by hand (or a suggestion accepted), offer to make it a rule for that payee.
   // One offer per row; each stays until answered.
-  const [suggestions, setSuggestions] = useState<Map<string, { payee: string; categoryId: string }>>(new Map())
-  const categorize = (t: Transaction, categoryId: string | null) => {
-    updateTransaction(t.id, { categoryId })
-    onCategorized?.(t.id)
+  const [ruleOffers, setRuleOffers] = useState<Map<string, { payee: string; categoryId: string }>>(new Map())
+  const offerRule = (t: Transaction, categoryId: string | null) => {
     const offer = categoryId && t.payee && categoryForPayee(file, t.payee) !== categoryId
-    setSuggestions((m) => {
+    setRuleOffers((m) => {
       const next = new Map(m)
       if (offer) next.set(t.id, { payee: t.payee, categoryId })
       else next.delete(t.id)
       return next
     })
   }
+  const categorize = (t: Transaction, categoryId: string | null) => {
+    updateTransaction(t.id, { categoryId })
+    onCategorized?.(t.id)
+    offerRule(t, categoryId)
+  }
   const dismiss = (transactionId: string) =>
-    setSuggestions((m) => {
+    setRuleOffers((m) => {
       const next = new Map(m)
       next.delete(transactionId)
       return next
@@ -55,7 +65,32 @@ export function TransactionTable({
   const acceptRule = (transactionId: string, payee: string, categoryId: string) => {
     setPayeeRule(payee, categoryId)
     // The rule answers every pending offer for this payee.
-    setSuggestions((m) => new Map([...m].filter(([id, s]) => id !== transactionId && s.payee !== payee)))
+    setRuleOffers((m) => new Map([...m].filter(([id, s]) => id !== transactionId && s.payee !== payee)))
+  }
+  /** Claude's suggestion for a row and which halves still apply: the category while the row needs one, the payee until it is renamed. */
+  const aiFor = (t: Transaction) => {
+    const s = aiSuggestions.get(t.id)
+    if (!s) return null
+    const showCategory = needsCategory(t)
+    const showPayee = !!s.payee && s.payee !== t.payee && !t.transferAccountId
+    return showCategory || showPayee ? { ...s, showCategory, showPayee } : null
+  }
+  /** Take the suggested category for these rows; one undo step, and a rule offer per payee. */
+  const acceptCategories = (rows: Transaction[]) => {
+    const items = rows.map((t) => ({ transactionId: t.id, categoryId: aiSuggestions.get(t.id)!.categoryId }))
+    acceptSuggestions(items)
+    const offered = new Set<string>()
+    for (const t of rows) {
+      onCategorized?.(t.id)
+      if (offered.has(t.payee)) continue
+      offered.add(t.payee)
+      offerRule(t, aiSuggestions.get(t.id)!.categoryId)
+    }
+    dismissAi(rows.filter((t) => !aiSuggestions.get(t.id)!.payee).map((t) => t.id))
+  }
+  const acceptPayee = (t: Transaction, payee: string) => {
+    acceptSuggestions([{ transactionId: t.id, payee }])
+    if (!needsCategory(t)) dismissAi([t.id])
   }
   /** Replace the split lines; with none left the transaction is a plain one again, in `categoryId`. */
   const setSplits = (t: Transaction, splits: Split[], categoryId: string | null = null) => {
@@ -90,6 +125,8 @@ export function TransactionTable({
   // A list that is only cleared rows needs no heading.
   const headings = sections.length > 1 || sections[0]?.title !== 'Cleared'
   const visible = sections.flatMap((s) => s.rows)
+  const suggested = visible.filter((t) => aiFor(t)?.showCategory)
+  const confident = suggested.filter((t) => aiSuggestions.get(t.id)!.confidence >= ACCEPT_ALL_FROM)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const categoryRef = useRef<PickerHandle>(null)
@@ -175,8 +212,42 @@ export function TransactionTable({
     return () => document.removeEventListener('keydown', onKey)
   })
 
+  const renderAiSuggestion = (t: Transaction) => {
+    const s = aiFor(t)
+    if (!s) return null
+    return (
+      <tr key={`${t.id}-ai`} className="rule-suggestion ai-suggestion">
+        <td colSpan={columns}>
+          <span>
+            {CLAUDE_MARK}
+            {s.showCategory && (
+              <>
+                Suggested <strong>{categoryName(s.categoryId)}</strong> <span className="muted">{s.confidence}%</span>
+              </>
+            )}
+            {s.showCategory && s.showPayee && ' · '}
+            {s.showPayee && (
+              <>
+                payee <strong>{s.payee}</strong>
+              </>
+            )}
+          </span>
+          {s.showCategory && <button onClick={() => acceptCategories([t])}>Use {categoryName(s.categoryId)}</button>}
+          {s.showPayee && (
+            <button className={s.showCategory ? 'secondary' : ''} onClick={() => acceptPayee(t, s.payee!)}>
+              Rename to {s.payee}
+            </button>
+          )}
+          <button className="link" onClick={() => dismissAi([t.id])}>
+            No
+          </button>
+        </td>
+      </tr>
+    )
+  }
+
   const renderSuggestion = (t: Transaction) => {
-    const s = suggestions.get(t.id)
+    const s = ruleOffers.get(t.id)
     if (!s) return null
     const others = uncategorizedFrom(file, s.payee).filter((o) => o.id !== t.id).length
     return (
@@ -284,12 +355,25 @@ export function TransactionTable({
         </td>
       </tr>,
       renderSplits(t),
+      renderAiSuggestion(t),
       renderSuggestion(t),
     ]
   }
 
   return (
     <>
+      {suggested.length > 0 && (
+        <div className="suggest-bar">
+          <span>
+            {CLAUDE_MARK} Claude suggested a category for {suggested.length === 1 ? 'one transaction' : `${suggested.length} transactions`}
+            {confident.length > 0 && `, ${confident.length} at ${ACCEPT_ALL_FROM}% or more`}. Nothing changes until you accept.
+          </span>
+          {confident.length > 0 && <button onClick={() => acceptCategories(confident)}>Accept all above {ACCEPT_ALL_FROM}%</button>}
+          <button className="link" onClick={() => dismissAi(suggested.map((t) => t.id))}>
+            Dismiss all
+          </button>
+        </div>
+      )}
       <table className="grid" ref={tableRef}>
         <thead>
           <tr>

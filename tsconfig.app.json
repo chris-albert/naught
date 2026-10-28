@@ -14,5 +14,6 @@
     "noEmit": true,
     "types": ["wicg-file-system-access", "vite/client"]
   },
-  "include": ["src", "functions"]
+  "include": ["src", "functions"],
+  "exclude": ["src/**/*.eval.test.ts"]
 }

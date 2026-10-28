@@ -11,7 +11,8 @@ export function categoryForPayee(file: BudgetFile, payee: string): string | null
   return file.payeeRules?.[payee] ?? null
 }
 
-const needsCategory = (t: Transaction) => !t.categoryId && !t.transferAccountId && !isSplit(t)
+/** Uncategorized and not a transfer or split: what a rule, or a Claude suggestion, may categorize. */
+export const needsCategory = (t: Transaction) => !t.categoryId && !t.transferAccountId && !isSplit(t)
 
 /** Transactions a rule for `payee` would categorize right now. */
 export function uncategorizedFrom(file: BudgetFile, payee: string): Transaction[] {
