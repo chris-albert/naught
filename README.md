@@ -94,7 +94,7 @@ Early skeleton. Working today:
   Cmd/Ctrl+Z (Shift to redo, or the buttons at the bottom of the sidebar),
   including bank imports and version restores. The history lives in memory
   and is dropped when the file is reloaded or closed.
-- Version history (Google Drive budgets only): Settings → Version history
+- Version history (Google Drive budgets only): Settings → File
   lists Drive's revisions of the file, shows what any of them held, and
   restores one as a new save (itself undoable). Drive keeps every revision
   for 30 days or until there are 100, so the app also marks the first save

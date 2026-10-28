@@ -13,7 +13,7 @@ const TABS: [string, string][] = [
 /** Tab strip shared by the report pages. */
 export function ReportsNav() {
   return (
-    <nav className="report-tabs">
+    <nav className="tabs">
       {TABS.map(([to, label]) => (
         <NavLink key={to} to={to} end={to === '/app/reports'}>
           {label}

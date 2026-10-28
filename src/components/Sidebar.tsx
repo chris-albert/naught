@@ -6,7 +6,6 @@ import { formatCents } from '../model/money'
 import { saveNow, useBudget, type SaveState } from '../store/budgetStore'
 import { useSync } from '../store/syncStore'
 import { getAccessUrl } from '../simplefin/client'
-import { downloadBackup } from '../storage/fileStore'
 import { getTheme, nextTheme, setTheme } from '../theme'
 
 const shortcut = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
@@ -24,7 +23,6 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
   const saveState = useBudget((s) => s.saveState)
   const demo = useBudget((s) => s.demo)
   const close = useBudget((s) => s.close)
-  const hasVersions = useBudget((s) => !!s.storage?.versions)
   const past = useBudget((s) => s.past)
   const future = useBudget((s) => s.future)
   const undo = useBudget((s) => s.undo)
@@ -88,36 +86,34 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
         <AccountLink key={a.id} id={a.id} name={a.name} balance={accountBalance(file, a.id)} status={status(a.id)} />
       ))}
 
-      <h2>Settings</h2>
-      <NavLink to="/app/settings/accounts">Accounts</NavLink>
-      <NavLink to="/app/settings/rules">Payee rules</NavLink>
-      {hasVersions && <NavLink to="/app/settings/versions">Version history</NavLink>}
-      <NavLink to="/app/settings/ai">AI</NavLink>
-      <NavLink to="/app/import">Import</NavLink>
-      <button className="link" onClick={() => downloadBackup(file)}>
-        Download backup
-      </button>
-      <button
-        className="link"
-        onClick={() => {
-          const t = nextTheme(theme)
-          setTheme(t)
-          setThemeState(t)
-        }}
-      >
-        Theme: {theme}
-      </button>
-      <button className="link" onClick={close}>
-        {demo ? 'Leave demo' : 'Close file'}
-      </button>
+      <NavLink to="/app/settings" className="settings-link">
+        Settings
+      </NavLink>
 
-      <div className="history-row">
-        <button className="link" disabled={past.length === 0} onClick={undo} title={`Undo (${shortcut}Z)`}>
-          ↶ Undo{past.length > 0 && ` ${past[past.length - 1].label}`}
-        </button>
-        <button className="link" disabled={future.length === 0} onClick={redo} title={`Redo (${shortcut}⇧Z)`}>
-          ↷ Redo
-        </button>
+      <div className="sidebar-footer">
+        <div className="tool-row">
+          <button className="link" disabled={past.length === 0} onClick={undo} title={`Undo (${shortcut}Z)`}>
+            ↶ Undo{past.length > 0 && ` ${past[past.length - 1].label}`}
+          </button>
+          <button className="link" disabled={future.length === 0} onClick={redo} title={`Redo (${shortcut}⇧Z)`}>
+            ↷ Redo
+          </button>
+        </div>
+        <div className="tool-row">
+          <button
+            className="link"
+            onClick={() => {
+              const t = nextTheme(theme)
+              setTheme(t)
+              setThemeState(t)
+            }}
+          >
+            Theme: {theme}
+          </button>
+          <button className="link" onClick={close}>
+            {demo ? 'Leave demo' : 'Close file'}
+          </button>
+        </div>
       </div>
 
       {demo ? (

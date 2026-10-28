@@ -117,6 +117,7 @@ code { font-size: 0.9em; background: var(--panel-2); padding: 1px 5px; border-ra
 .sidebar a:hover, .sidebar button.link:hover { background: rgba(255, 255, 255, 0.07); }
 .sidebar a.active { background: var(--sidebar-active); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent-2); }
 .sidebar h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--sidebar-muted); margin: 18px 10px 6px; font-weight: 600; }
+.sidebar .settings-link { margin-top: 18px; }
 .brand-row { display: flex; align-items: center; gap: 10px; margin: 0 10px 14px; }
 .brand-icon { width: 30px; height: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
 .brand-icon.large { width: 48px; height: 48px; border-radius: 12px; }
@@ -128,11 +129,12 @@ code { font-size: 0.9em; background: var(--panel-2); padding: 1px 5px; border-ra
 }
 .account-link { display: flex !important; justify-content: space-between; gap: 8px; }
 .account-link .num { color: var(--sidebar-muted); font-variant-numeric: tabular-nums; font-size: 13px; }
-.history-row { margin-top: auto; display: flex; gap: 2px; font-size: 12px; }
-.history-row button.link { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 5px 8px; }
-.history-row button.link:disabled { opacity: 0.4; cursor: default; }
-.history-row button.link:disabled:hover { background: none; }
-.history-row + .save-state, .history-row + .demo-note { margin-top: 0; }
+.sidebar-footer { margin-top: auto; }
+.tool-row { display: flex; gap: 2px; font-size: 12px; }
+.tool-row button.link { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 5px 8px; }
+.tool-row button.link:disabled { opacity: 0.4; cursor: default; }
+.tool-row button.link:disabled:hover { background: none; }
+.sidebar-footer + .save-state, .sidebar-footer + .demo-note { margin-top: 0; }
 .save-state { margin-top: auto; padding: 10px; font-size: 12px; color: var(--sidebar-muted); display: flex; align-items: center; gap: 8px; }
 .save-state::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--sidebar-muted); }
 .save-clean::before { background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
@@ -784,11 +786,11 @@ kbd { font: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--
 .report .total-row th:first-child:hover, .report .total-row th:first-child:focus-within { z-index: 2; }
 
 /* ---------- report tabs ---------- */
-.report-tabs { display: flex; gap: 2px; padding: 3px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; flex-wrap: wrap; }
-.report-tabs a { padding: 5px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; }
-.report-tabs a:hover { color: var(--text); }
-.report-tabs a.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
-@media (max-width: 900px) { .report-tabs { width: 100%; } .report-tabs a { flex: 1; text-align: center; padding: 5px 6px; font-size: 12px; } }
+.tabs { display: flex; gap: 2px; padding: 3px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; flex-wrap: wrap; }
+.tabs a { padding: 5px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+.tabs a:hover { color: var(--text); }
+.tabs a.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+@media (max-width: 900px) { .tabs { width: 100%; } .tabs a { flex: 1; text-align: center; padding: 5px 6px; font-size: 12px; } }
 
 /* ---------- month review ---------- */
 .month-nav-end { width: 32px; height: 32px; }

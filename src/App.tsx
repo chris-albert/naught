@@ -9,7 +9,7 @@ import { AccountsPage } from './pages/AccountsPage'
 import { AiPage } from './pages/AiPage'
 import { AskPage } from './pages/AskPage'
 import { BudgetPage } from './pages/BudgetPage'
-import { ImportPage } from './pages/ImportPage'
+import { FilePage } from './pages/FilePage'
 import { InsightsPage } from './pages/InsightsPage'
 import { LandingPage } from './pages/LandingPage'
 import { MonthReviewPage } from './pages/MonthReviewPage'
@@ -20,7 +20,6 @@ import { ReportsPage } from './pages/ReportsPage'
 import { SyncPage } from './pages/SyncPage'
 import { TrendPage } from './pages/TrendPage'
 import { TrendsPage } from './pages/TrendsPage'
-import { VersionsPage } from './pages/VersionsPage'
 import { WelcomePage, type PendingBudget } from './pages/WelcomePage'
 import { YearReviewPage } from './pages/YearReviewPage'
 import { fileStorage, forgetHandle, hasPermission, readHandle, rememberedHandle, requestPermission } from './storage/fileStore'
@@ -158,12 +157,14 @@ function BudgetApp() {
           <Route path="ask" element={<AskPage />} />
           <Route path="accounts" element={<AccountPage />} />
           <Route path="accounts/:id" element={<AccountPage />} />
-          <Route path="import" element={<ImportPage />} />
           <Route path="sync" element={<SyncPage />} />
+          <Route path="settings" element={<Navigate to="/app/settings/accounts" replace />} />
           <Route path="settings/accounts" element={<AccountsPage />} />
           <Route path="settings/rules" element={<PayeeRulesPage />} />
-          <Route path="settings/versions" element={<VersionsPage />} />
           <Route path="settings/ai" element={<AiPage />} />
+          <Route path="settings/file" element={<FilePage />} />
+          <Route path="settings/versions" element={<Navigate to="/app/settings/file" replace />} />
+          <Route path="import" element={<Navigate to="/app/settings/file" replace />} />
           <Route path="*" element={<Navigate to="/app/budget" replace />} />
         </Routes>
       </main>

@@ -5,7 +5,7 @@ import type { BudgetVersion } from '../storage/storage'
 import { useBudget } from '../store/budgetStore'
 
 /** Earlier saved copies of the budget (Google Drive revisions), with a restore button. */
-export function VersionsPage() {
+export function VersionHistory() {
   const file = useBudget((s) => s.file)!
   const storage = useBudget((s) => s.storage)
   const update = useBudget((s) => s.update)
@@ -29,14 +29,10 @@ export function VersionsPage() {
 
   if (!versions) {
     return (
-      <>
-        <header className="page-header">
-          <h2>Version history</h2>
-        </header>
-        <div className="page-body">
-          <p className="muted">Only budgets kept in Google Drive have a version history here. For a file in a synced folder, use your sync provider’s own version history.</p>
-        </div>
-      </>
+      <section className="card">
+        <h3>Version history</h3>
+        <p className="muted">Only budgets kept in Google Drive have a version history here. For a file in a synced folder, use your sync provider’s own version history.</p>
+      </section>
     )
   }
 
@@ -67,62 +63,58 @@ export function VersionsPage() {
   }
 
   return (
-    <>
-      <header className="page-header">
-        <h2>Version history</h2>
-        <span className="muted">Every save in Google Drive for the last 30 days, plus the first save of each day for the last two months.</span>
-      </header>
-      <div className="page-body">
-        {error && <p className="neg">{error}</p>}
-        {selected && (
-          <section className="card">
-            <h3>
-              {when(selected.version.savedAt)}
-              <button className="link" onClick={() => setSelected(null)}>
-                close
-              </button>
-            </h3>
-            <Summary then={selected.data} now={file} />
-            <button onClick={restore}>Restore this version</button>
-          </section>
-        )}
-        {list === null ? (
-          <p className="muted">Loading…</p>
-        ) : list.length === 0 ? (
-          <p className="muted">No earlier versions yet.</p>
-        ) : (
-          <table className="grid">
-            <thead>
-              <tr>
-                <th>Saved</th>
-                <th className="num">Size</th>
-                <th></th>
-                <th></th>
+    <section className="card">
+      <h3>Version history</h3>
+      <p className="muted">Every save in Google Drive for the last 30 days, plus the first save of each day for the last two months.</p>
+      {error && <p className="neg">{error}</p>}
+      {selected && (
+        <div className="card">
+          <h3>
+            {when(selected.version.savedAt)}
+            <button className="link" onClick={() => setSelected(null)}>
+              close
+            </button>
+          </h3>
+          <Summary then={selected.data} now={file} />
+          <button onClick={restore}>Restore this version</button>
+        </div>
+      )}
+      {list === null ? (
+        <p className="muted">Loading…</p>
+      ) : list.length === 0 ? (
+        <p className="muted">No earlier versions yet.</p>
+      ) : (
+        <table className="grid">
+          <thead>
+            <tr>
+              <th>Saved</th>
+              <th className="num">Size</th>
+              <th></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((v, i) => (
+              <tr key={v.id} className={selected?.version.id === v.id ? 'selected' : undefined}>
+                <td>
+                  {when(v.savedAt)}
+                  {i === 0 && <span className="muted"> (current)</span>}
+                </td>
+                <td className="num">{formatSize(v.size)}</td>
+                <td className="muted">{v.kept && 'kept'}</td>
+                <td className="actions">
+                  {i > 0 && (
+                    <button className="link" disabled={loading === v.id} onClick={() => show(v)}>
+                      {loading === v.id ? 'Loading…' : 'Show'}
+                    </button>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {list.map((v, i) => (
-                <tr key={v.id} className={selected?.version.id === v.id ? 'selected' : undefined}>
-                  <td>
-                    {when(v.savedAt)}
-                    {i === 0 && <span className="muted"> (current)</span>}
-                  </td>
-                  <td className="num">{formatSize(v.size)}</td>
-                  <td className="muted">{v.kept && 'kept'}</td>
-                  <td className="actions">
-                    {i > 0 && (
-                      <button className="link" disabled={loading === v.id} onClick={() => show(v)}>
-                        {loading === v.id ? 'Loading…' : 'Show'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
   )
 }
 

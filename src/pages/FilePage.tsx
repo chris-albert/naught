@@ -2,13 +2,17 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CategoryPicker } from '../components/CategoryPicker'
 import { confirm } from '../components/ConfirmDialog'
+import { SettingsNav } from '../components/SettingsNav'
+import { VersionHistory } from '../components/VersionHistory'
 import { importYnab } from '../import/ynab'
 import { convertHoldingCategory, previewHoldingConversion } from '../model/holding'
 import { formatCents } from '../model/money'
 import { INCOME_CATEGORY_ID } from '../model/types'
+import { downloadBackup } from '../storage/fileStore'
 import { useBudget } from '../store/budgetStore'
 
-export function ImportPage() {
+/** Settings → File: import, backup and version history of the budget file itself. */
+export function FilePage() {
   const file = useBudget((s) => s.file)!
   const update = useBudget((s) => s.update)
   const navigate = useNavigate()
@@ -45,7 +49,8 @@ export function ImportPage() {
   return (
     <>
       <header className="page-header">
-        <h2>Import</h2>
+        <h2>Settings</h2>
+        <SettingsNav />
       </header>
       <div className="page-body">
       <section className="card">
@@ -78,6 +83,14 @@ export function ImportPage() {
           </button>
         </div>
       </section>
+
+      <section className="card">
+        <h3>Backup</h3>
+        <p className="muted">Save a copy of the whole budget as a JSON file.</p>
+        <button onClick={() => downloadBackup(file)}>Download backup</button>
+      </section>
+
+      <VersionHistory />
       </div>
     </>
   )
