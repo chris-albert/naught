@@ -35,9 +35,9 @@ export interface CategorySuggestion {
 export const MAX_ROWS = 100
 /** How many of the person's past categorized transactions go along as examples. */
 const EXAMPLES = 40
-/** Past transactions from each row's own payee, on top of the examples. */
-const RELATED_PER_ROW = 2
-const MAX_RELATED = 40
+/** Past transactions from each row's own payee, on top of the examples: enough to show a payee that is filed in several categories. */
+const RELATED_PER_ROW = 5
+const MAX_RELATED = 80
 
 const Output = z.object({
   suggestions: z.array(
@@ -55,7 +55,7 @@ const RULES = [
   '',
   'Go by the person\'s own past choices first: the examples show how they categorize, and a past transaction from the same payee nearly always has the right category. Otherwise go by the payee and memo. Pay from an employer, interest and other money in that is not a refund of spending is Income; a refund belongs in the category the spending came from.',
   '',
-  'Confidence is 0 to 100. Give 90 or more only when a past transaction from the same payee shows the category, or the payee is unmistakable (a grocery chain under a groceries category). Give 50 or less when you are guessing between categories.',
+  'Confidence is 0 to 100. Give 90 or more only when every past transaction from the same payee is in that category, or the payee is unmistakable (a grocery chain under a groceries category). When the person has put the same payee in more than one category (Amazon, Target, a card payment), their choice depends on the purchase, not the payee: pick the most frequent category and give 60 or less. Give 50 or less when you are guessing between categories.',
   '',
   'Also give a clean payee name when the bank\'s text is noisy: the merchant as a person would write it, without store numbers, card or reference suffixes, processor prefixes (SQ *, TST*, PP*, PAYPAL *) or city codes. "AMZN Mktp US*2K3J" is "Amazon", "SQ *BLUE BOTTLE 4421" is "Blue Bottle". Use the spelling the examples use for the same merchant. Return null when the payee is already clean.',
   '',
