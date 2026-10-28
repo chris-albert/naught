@@ -37,7 +37,7 @@ Early skeleton. Working today:
   (or `s`) divides it across categories: lower a line's amount and give the
   leftover its own category; each line counts under its category in the
   budget and reports, and any leftover stays uncategorized. An
-  account can carry a link to its bank's site (set under Manage accounts),
+  account can carry a link to its bank's site (set under Settings → Accounts),
   shown in the page header for quick logins. A credit card can also record
   the day of the month its statement closes (the balance that day is what
   the issuer reports to the credit bureaus). For the four days before a
@@ -72,21 +72,23 @@ Early skeleton. Working today:
   history" on the account page) and Year in review. These views start their range at
   the first month with data, so a young budget is not averaged over empty
   months.
-- SimpleFIN bank sync: the Sync page walks through creating the SimpleFIN
-  Bridge account and setup token (with links straight to the right pages),
-  recognizes a pasted setup token, claim URL or access URL as you type, then
-  fetch, link bank accounts to budget accounts (or create them), import. Pending transactions are skipped
-  (banks change their id and amount when they post). Posted ones are
-  de-duplicated by bank id and by same-amount-within-10-days against manually
-  entered ones. Once accounts are linked, "Sync now" on the page (or ↻ in the
-  sidebar) pulls and imports in one step. Every sync is recorded in the file,
-  and the page lists the past ones with their counts; each opens to the
-  transactions it added (including the ones payee rules categorized), matched
-  or updated. The SimpleFIN credentials live in the browser's IndexedDB, not
-  in the file. For a budget in Google Drive they are also copied to the app's
-  hidden Drive folder (`drive.appdata`), so other devices signed in to the
-  same Google account connect without a new token; disconnecting on one
-  device disconnects them all.
+- SimpleFIN bank sync: Settings → Accounts walks through creating the
+  SimpleFIN Bridge account and setup token (with links straight to the right
+  pages), recognizes a pasted setup token, claim URL or access URL as you
+  type, then fetch, link bank accounts to budget accounts (or create them),
+  import. Pending transactions are imported as uncleared and clear when they
+  post. Posted ones are de-duplicated by bank id and by
+  same-amount-within-10-days against manually entered ones. Once accounts are
+  linked, the Sync page (or ↻ in the sidebar, which opens it) pulls and
+  imports in one step. Every sync is recorded in the file, and the Sync page
+  lists the past ones with their counts; each opens to the transactions it
+  added, matched or updated in the same editable table as the account pages,
+  so new rows are categorized and matches checked right there. The SimpleFIN
+  credentials live in the browser's IndexedDB, not in the file. For a budget
+  in Google Drive they are also copied to the app's hidden Drive folder
+  (`drive.appdata`), so other devices signed in to the same Google account
+  connect without a new token; disconnecting on one device disconnects them
+  all.
 
 - Undo and redo: every change made in the current tab can be undone with
   Cmd/Ctrl+Z (Shift to redo, or the buttons at the bottom of the sidebar),
@@ -111,7 +113,7 @@ Early skeleton. Working today:
   opened in Claude or ChatGPT or copied. Only payee names, amounts, dates and
   category names are sent.
 - AI categorization: with a key saved, "Suggest categories" on an account page
-  (or on Needs a category) asks Claude for a category for each uncategorized
+  (or on a run on the Sync page) asks Claude for a category for each uncategorized
   transaction, and every bank sync does the same for the rows it added. Each
   suggestion sits under its row with a confidence and a one-click accept;
   "Accept all above 90%" takes the sure ones in one undoable step. Claude also

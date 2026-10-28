@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { confirm } from '../components/ConfirmDialog'
 import { Picker } from '../components/Picker'
+import { SimplefinSettings } from '../components/SimplefinSettings'
 import { formatCents } from '../model/money'
 import type { Account, AccountType } from '../model/types'
 import { useBudget } from '../store/budgetStore'
@@ -18,7 +19,7 @@ export function AccountsPage() {
   return (
     <>
       <header className="page-header">
-        <h2>Manage accounts</h2>
+        <h2>Accounts</h2>
         <span className="muted">The order here is the order in the sidebar.</span>
       </header>
       <div className="page-body">
@@ -27,6 +28,7 @@ export function AccountsPage() {
         <h3>Add an account</h3>
         <AddAccount />
       </section>
+      <SimplefinSettings />
       </div>
     </>
   )
@@ -70,6 +72,7 @@ function AccountList() {
         />
         {a.closed && <span className="muted"> (closed)</span>}
         {!a.onBudget && <span className="muted"> · off budget</span>}
+        {a.simplefinId && <span className="muted"> · synced</span>}
       </td>
       <td>
         <Picker options={accountTypes} value={a.type} onChange={(type) => updateAccount(a.id, { type: type as AccountType })} />
