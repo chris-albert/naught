@@ -68,7 +68,7 @@ function daysBetween(a: string, b: string): number {
 }
 
 /** Banks reformat descriptions between pending and posted; compare letters only, and accept one being a prefix of the other. */
-function samePayee(a: string | undefined, b: string | undefined): boolean {
+export function samePayee(a: string | undefined, b: string | undefined): boolean {
   if (!a || !b) return false
   const norm = (s: string) => s.toUpperCase().replace(/[^A-Z]/g, '')
   const x = norm(a)

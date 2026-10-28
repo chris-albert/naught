@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { ensurePaymentCategories } from '../model/creditCards'
 import { setNotRecurring } from '../model/insights'
-import { deletePayeeRule, setPayeeRule } from '../model/payeeRules'
+import { deletePayeeRule, needsCategory, setPayeeRule } from '../model/payeeRules'
 import { setTransfer } from '../model/transfers'
 import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type CategoryGroup, type Cents, type MonthKey, type Transaction } from '../model/types'
 import { confirm } from '../components/ConfirmDialog'
@@ -47,6 +47,12 @@ interface BudgetState {
   /** New category at the end of `groupId`. */
   addCategory: (groupId: string, name: string) => void
   updateCategory: (categoryId: string, patch: Partial<Category>) => void
+  /**
+   * Take Claude's suggestions (see src/ai/categorize.ts) for these transactions: a category for ones that
+   * still need one, a cleaner payee name, or both. One undo step for the whole batch. Transactions a sync
+   * added are noted on that run as categorized by Claude.
+   */
+  acceptSuggestions: (items: { transactionId: string; categoryId?: string; payee?: string }[]) => void
   /** Always give `payee` this category; also fills it in on existing uncategorized transactions. */
   setPayeeRule: (payee: string, categoryId: string) => void
   deletePayeeRule: (payee: string) => void
@@ -160,6 +166,32 @@ export const useBudget = create<BudgetState>((set, get) => ({
       ...file,
       categories: file.categories.map((c) => (c.id === categoryId ? { ...c, ...patch } : c)),
     }), 'edit category'),
+
+  acceptSuggestions: (items) =>
+    get().update((file) => {
+      const byId = new Map(items.map((i) => [i.transactionId, i]))
+      const categorized = new Set<string>()
+      let changed = false
+      const transactions = file.transactions.map((t) => {
+        const item = byId.get(t.id)
+        if (!item) return t
+        const patch: Partial<Transaction> = {}
+        if (item.categoryId && needsCategory(t)) {
+          patch.categoryId = item.categoryId
+          categorized.add(t.id)
+        }
+        if (item.payee !== undefined && item.payee !== t.payee && !t.transferAccountId) patch.payee = item.payee
+        if (Object.keys(patch).length === 0) return t
+        changed = true
+        return { ...t, ...patch }
+      })
+      if (!changed) return file
+      const syncRuns = file.syncRuns?.map((r) => {
+        const mine = r.added.filter((id) => categorized.has(id) && !r.aiCategorized?.includes(id))
+        return mine.length ? { ...r, aiCategorized: [...(r.aiCategorized ?? []), ...mine] } : r
+      })
+      return { ...file, transactions, ...(syncRuns ? { syncRuns } : {}) }
+    }, items.length > 1 ? 'accept suggestions' : 'accept suggestion'),
 
   setPayeeRule: (payee, categoryId) => get().update((file) => setPayeeRule(file, payee, categoryId), 'payee rule'),
 

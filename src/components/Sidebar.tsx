@@ -5,6 +5,7 @@ import { reconcile } from '../model/reconcile'
 import { formatCents } from '../model/money'
 import { isUncategorized } from '../model/splits'
 import { saveNow, useBudget, type SaveState } from '../store/budgetStore'
+import { suggestForRun, useSuggestions } from '../store/suggestionStore'
 import { getAccessUrl } from '../simplefin/client'
 import { quickSync } from '../simplefin/quickSync'
 import { syncStats } from '../simplefin/sync'
@@ -35,6 +36,7 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
   const [connected, setConnected] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ text: string; error: boolean } | null>(null)
+  const suggesting = useSuggestions((s) => s.busy)
 
   // Re-check after navigating, e.g. back from the sync page after connecting.
   const location = useLocation()
@@ -46,7 +48,9 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
     setSyncing(true)
     setSyncMessage(null)
     try {
-      const s = syncStats(await quickSync())
+      const run = await quickSync()
+      const s = syncStats(run)
+      void suggestForRun(run)
       const parts = [s.added && `${s.added} added`, s.categorized && `${s.categorized} auto-categorized`, s.matched && `${s.matched} matched`, s.updated && `${s.updated} updated`, s.removed && `${s.removed} removed`].filter(Boolean)
       setSyncMessage({ text: parts.length ? parts.join(', ') : 'Up to date', error: false })
     } catch (e) {
@@ -111,6 +115,7 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
         </button>
       </div>
       {syncMessage && <div className={`sync-message ${syncMessage.error ? 'neg' : ''}`}>{syncMessage.text}</div>}
+      {suggesting && <div className="sync-message">Asking Claude for categories…</div>}
       <NavLink to="/app/import">Import</NavLink>
       <button className="link" onClick={() => downloadBackup(file)}>
         Download backup

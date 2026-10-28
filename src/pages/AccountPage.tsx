@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { AddTransactionForm } from '../components/AddTransactionForm'
 import { BalanceHistoryStats, RangePicker } from '../components/BalanceHistoryCard'
 import { ReconcilePanel } from '../components/ReconcilePanel'
+import { SuggestCategories } from '../components/SuggestCategories'
 import { TransactionTable } from '../components/TransactionTable'
 import { addDays } from '../model/accountBalances'
 import { accountBalance } from '../model/budgetMath'
@@ -75,6 +76,7 @@ export function AccountPage() {
       )}
       {account && <ReconcilePanel file={file} accountId={account.id} />}
       {account && adding && <AddTransactionForm file={file} accountId={account.id} />}
+      <SuggestCategories file={file} transactions={inScope} />
       <TransactionTable
         file={file}
         transactions={transactions}
