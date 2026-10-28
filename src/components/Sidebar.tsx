@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { accountBalance } from '../model/budgetMath'
 import { reconcile } from '../model/reconcile'
 import { formatCents } from '../model/money'
-import { isUncategorized } from '../model/splits'
 import { saveNow, useBudget, type SaveState } from '../store/budgetStore'
-import { suggestForRun, useSuggestions } from '../store/suggestionStore'
+import { useSync } from '../store/syncStore'
 import { getAccessUrl } from '../simplefin/client'
-import { quickSync } from '../simplefin/quickSync'
-import { syncStats } from '../simplefin/sync'
 import { downloadBackup } from '../storage/fileStore'
 import { getTheme, nextTheme, setTheme } from '../theme'
 
@@ -34,36 +31,24 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
   const redo = useBudget((s) => s.redo)
   const [theme, setThemeState] = useState(getTheme)
   const [connected, setConnected] = useState(false)
-  const [syncing, setSyncing] = useState(false)
-  const [syncMessage, setSyncMessage] = useState<{ text: string; error: boolean } | null>(null)
-  const suggesting = useSuggestions((s) => s.busy)
+  const syncing = useSync((s) => s.busy)
+  const sync = useSync((s) => s.sync)
+  const navigate = useNavigate()
 
-  // Re-check after navigating, e.g. back from the sync page after connecting.
+  // Re-check after navigating, e.g. back from settings after connecting.
   const location = useLocation()
   useEffect(() => {
     getAccessUrl().then((u) => setConnected(!!u))
   }, [location.pathname])
 
-  const runSync = async () => {
-    setSyncing(true)
-    setSyncMessage(null)
-    try {
-      const run = await quickSync()
-      const s = syncStats(run)
-      void suggestForRun(run)
-      const parts = [s.added && `${s.added} added`, s.categorized && `${s.categorized} auto-categorized`, s.matched && `${s.matched} matched`, s.updated && `${s.updated} updated`, s.removed && `${s.removed} removed`].filter(Boolean)
-      setSyncMessage({ text: parts.length ? parts.join(', ') : 'Up to date', error: false })
-    } catch (e) {
-      setSyncMessage({ text: (e as Error).message, error: true })
-    } finally {
-      setSyncing(false)
-      setTimeout(() => setSyncMessage(null), 8000)
-    }
+  /** ↻: start the sync and go watch it on the Sync page. */
+  const runSync = () => {
+    void sync()
+    navigate('/app/sync')
   }
   const open = file.accounts.filter((a) => !a.closed)
   const onBudget = open.filter((a) => a.onBudget)
   const offBudget = open.filter((a) => !a.onBudget)
-  const uncategorized = file.transactions.filter(isUncategorized).length
   const status = (id: string): 'ok' | 'off' | null => {
     const r = reconcile(file, id)
     return r ? (r.difference === 0 ? 'ok' : 'off') : null
@@ -77,17 +62,22 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
       </div>
 
       <NavLink to="/app/budget">Budget</NavLink>
+      <div className="nav-with-action">
+        <NavLink to="/app/sync">Sync</NavLink>
+        <button
+          className={`icon-button ${syncing ? 'spinning' : ''}`}
+          title={connected ? 'Sync linked accounts now' : 'Connect SimpleFIN under Settings → Accounts first'}
+          disabled={!connected || syncing}
+          onClick={runSync}
+        >
+          ↻
+        </button>
+      </div>
       <NavLink to="/app/reports">Reports</NavLink>
       <NavLink to="/app/ask">Ask</NavLink>
       <NavLink to="/app/accounts" end>
         All accounts
       </NavLink>
-      {uncategorized > 0 && (
-        <NavLink to="/app/accounts?filter=uncategorized" className="account-link">
-          <span>Needs a category</span>
-          <span className="badge">{uncategorized}</span>
-        </NavLink>
-      )}
 
       <h2>Budget accounts</h2>
       {onBudget.map((a) => (
@@ -99,23 +89,10 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
       ))}
 
       <h2>Settings</h2>
-      <NavLink to="/app/settings/accounts">Manage accounts</NavLink>
+      <NavLink to="/app/settings/accounts">Accounts</NavLink>
       <NavLink to="/app/settings/rules">Payee rules</NavLink>
       {hasVersions && <NavLink to="/app/settings/versions">Version history</NavLink>}
       <NavLink to="/app/settings/ai">AI</NavLink>
-      <div className="nav-with-action">
-        <NavLink to="/app/sync">Bank sync</NavLink>
-        <button
-          className={`icon-button ${syncing ? 'spinning' : ''}`}
-          title={connected ? 'Sync linked accounts now' : 'Connect SimpleFIN first'}
-          disabled={!connected || syncing}
-          onClick={runSync}
-        >
-          ↻
-        </button>
-      </div>
-      {syncMessage && <div className={`sync-message ${syncMessage.error ? 'neg' : ''}`}>{syncMessage.text}</div>}
-      {suggesting && <div className="sync-message">Asking Claude for categories…</div>}
       <NavLink to="/app/import">Import</NavLink>
       <button className="link" onClick={() => downloadBackup(file)}>
         Download backup

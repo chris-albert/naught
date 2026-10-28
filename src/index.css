@@ -589,7 +589,6 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .sync-runs > li.open .sync-run-head .chevron { transform: none; }
 .sync-runs .sync-run-head .muted { font-weight: 400; }
 .sync-runs .grid { margin: 4px 0 12px; }
-.sync-runs .grid td a { color: inherit; }
 
 /* ---------- sidebar sync button ---------- */
 .nav-with-action { display: flex; align-items: center; gap: 4px; }
@@ -599,8 +598,6 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .icon-button:disabled { opacity: 0.35; cursor: default; }
 .icon-button.spinning { animation: spin 0.9s linear infinite; opacity: 1; color: var(--accent-2); }
 @keyframes spin { to { transform: rotate(360deg); } }
-.sync-message { font-size: 12px; padding: 2px 10px 6px; color: var(--accent-2); }
-.sync-message.neg { color: var(--neg); }
 
 /* ---------- reports ---------- */
 :root { --series-income: #1f9d6a; --series-spending: #6d5ce7; }

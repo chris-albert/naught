@@ -21,12 +21,15 @@ export function TransactionTable({
   showAccount,
   recentlyCategorized,
   onCategorized,
+  sections: givenSections,
 }: {
   file: BudgetFile
   transactions: Transaction[]
   showAccount: boolean
   /** Rows to show in their own "Recently categorized" section instead of by cleared state. */
   recentlyCategorized?: Set<string>
+  /** Group the rows under these headings instead of by cleared state (the Sync page: added, matched, updated). */
+  sections?: { title: string; rows: Transaction[] }[]
   /** Called after a category is picked by hand, so the page can keep the row visible under a filter. */
   onCategorized?: (transactionId: string) => void
 }) {
@@ -117,11 +120,13 @@ export function TransactionTable({
   const rest = transactions.filter((t) => !recentlyCategorized?.has(t.id) && t.cleared !== 'uncleared')
   const shown = rest.slice(0, LIMIT)
   const columns = showAccount ? 7 : 6
-  const sections = [
-    { title: 'Recently categorized', rows: recent, count: true },
-    { title: 'Uncleared', rows: uncleared, count: true },
-    { title: 'Cleared', rows: shown, count: false },
-  ].filter((s) => s.rows.length > 0)
+  const sections = (
+    givenSections?.map((s) => ({ ...s, count: true })) ?? [
+      { title: 'Recently categorized', rows: recent, count: true },
+      { title: 'Uncleared', rows: uncleared, count: true },
+      { title: 'Cleared', rows: shown, count: false },
+    ]
+  ).filter((s) => s.rows.length > 0)
   // A list that is only cleared rows needs no heading.
   const headings = sections.length > 1 || sections[0]?.title !== 'Cleared'
   const visible = sections.flatMap((s) => s.rows)
@@ -400,7 +405,7 @@ export function TransactionTable({
           </tbody>
         ))}
       </table>
-      {rest.length > LIMIT && (
+      {!givenSections && rest.length > LIMIT && (
         <p className="muted">
           Showing {LIMIT} of {rest.length} cleared transactions.
         </p>
