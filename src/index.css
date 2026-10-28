@@ -591,6 +591,7 @@ button.danger:not(.link):hover { box-shadow: 0 4px 12px rgba(214, 69, 69, 0.4); 
 .sync-runs > li.open .sync-run-head .chevron { transform: none; }
 .sync-runs .sync-run-head .muted { font-weight: 400; }
 .sync-runs .grid { margin: 4px 0 12px; }
+.grid .row-note { font-size: 11px; color: var(--muted); margin-top: 1px; }
 
 /* ---------- sidebar sync button ---------- */
 .nav-with-action { display: flex; align-items: center; gap: 4px; }

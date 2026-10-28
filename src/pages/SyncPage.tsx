@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SuggestCategories } from '../components/SuggestCategories'
 import { TransactionTable } from '../components/TransactionTable'
-import type { BudgetFile, SyncRun, Transaction } from '../model/types'
+import { formatCents } from '../model/money'
+import type { BudgetFile, SyncChange, SyncRun, Transaction } from '../model/types'
 import { getAccessUrl } from '../simplefin/client'
 import { useBudget } from '../store/budgetStore'
 import { useSuggestions } from '../store/suggestionStore'
@@ -111,6 +112,13 @@ function describeRun(r: SyncRun): string {
     .join(' · ')
 }
 
+/** "Cleared · amount was −$12.00 · date was 2026-09-10": what the bank changed on an updated row. */
+function describeChange(c: SyncChange): string {
+  return [c.cleared && 'Cleared', c.amount !== undefined && `amount was ${formatCents(c.amount)}`, c.date && `date was ${c.date}`]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 /** The transactions a sync added, matched or updated, as they are now, in the editable table. */
 function RunTransactions({ file, run }: { file: BudgetFile; run: SyncRun }) {
   const byId = new Map(file.transactions.map((t) => [t.id, t]))
@@ -123,6 +131,7 @@ function RunTransactions({ file, run }: { file: BudgetFile; run: SyncRun }) {
   ]
   const all = sections.flatMap((s) => s.rows)
   const missing = run.added.length + run.matched.length + run.updated.length - all.length
+  const notes = new Map(Object.entries(run.changes ?? {}).map(([id, change]) => [id, describeChange(change)]))
 
   return (
     <>
@@ -131,7 +140,7 @@ function RunTransactions({ file, run }: { file: BudgetFile; run: SyncRun }) {
       ) : (
         <>
           <SuggestCategories file={file} transactions={sections[0].rows} />
-          <TransactionTable file={file} transactions={all} showAccount sections={sections} />
+          <TransactionTable file={file} transactions={all} showAccount sections={sections} notes={notes} />
         </>
       )}
       {missing > 0 && (

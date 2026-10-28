@@ -84,6 +84,16 @@ export interface Transaction {
 }
 
 /** What one bank sync changed, so the Sync page can list past runs and the transactions each one touched. */
+/** The values a sync replaced on one transaction; a missing field did not change. */
+export interface SyncChange {
+  /** The date before the sync. */
+  date?: string
+  /** The amount before the sync. */
+  amount?: Cents
+  /** The bank posted a pending transaction, so it is now cleared. */
+  cleared?: boolean
+}
+
 export interface SyncRun {
   id: string
   /** ISO timestamp */
@@ -98,6 +108,8 @@ export interface SyncRun {
   matched: string[]
   /** Already-imported transactions whose date, amount or cleared state the bank changed. */
   updated: string[]
+  /** Of `updated`, what the bank changed, by transaction id. Runs recorded before this was kept have none. */
+  changes?: Record<string, SyncChange>
   unchanged: number
   /** Stale pending rows from earlier imports that were dropped. */
   removed: number

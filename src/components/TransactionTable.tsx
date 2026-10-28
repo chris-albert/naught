@@ -22,6 +22,7 @@ export function TransactionTable({
   recentlyCategorized,
   onCategorized,
   sections: givenSections,
+  notes,
 }: {
   file: BudgetFile
   transactions: Transaction[]
@@ -32,6 +33,8 @@ export function TransactionTable({
   sections?: { title: string; rows: Transaction[] }[]
   /** Called after a category is picked by hand, so the page can keep the row visible under a filter. */
   onCategorized?: (transactionId: string) => void
+  /** A line shown under the payee of a row, by transaction id (the Sync page: what the bank changed). */
+  notes?: Map<string, string>
 }) {
   const updateTransaction = useBudget((s) => s.updateTransaction)
   const deleteTransaction = useBudget((s) => s.deleteTransaction)
@@ -331,6 +334,7 @@ export function TransactionTable({
             value={t.transferAccountId ? transferLabel(t.transferAccountId) : t.payee}
             onChange={(payee) => setPayee(t, payee)}
           />
+          {notes?.has(t.id) && <div className="row-note">{notes.get(t.id)}</div>}
         </td>
         <td>
           {t.transferAccountId ? (
