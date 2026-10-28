@@ -29,6 +29,7 @@ describe.skipIf(!FILE || !KEY)('categorize accuracy', () => {
     const step = Math.max(1, Math.floor(categorized.length / SAMPLE))
     const sample = categorized.filter((_, i) => i % step === 0).slice(0, SAMPLE)
     const hidden = new Set(sample.map((t) => t.id))
+    const truth = new Map(sample.map((t) => [t.id, t.categoryId]))
     const blind: BudgetFile = { ...file, transactions: file.transactions.map((t) => (hidden.has(t.id) ? { ...t, categoryId: null } : t)) }
     const rows = blind.transactions.filter((t) => hidden.has(t.id) && needsCategory(t))
     const knownPayee = (t: Transaction) => blind.transactions.some((o) => o.categoryId && !o.transferAccountId && samePayee(o.payee, t.payee))
@@ -38,7 +39,7 @@ describe.skipIf(!FILE || !KEY)('categorize accuracy', () => {
     const name = (id: string | null) => file.categories.find((c) => c.id === id)?.name ?? id
     const score = (set: Transaction[]) => {
       const answered = set.filter((t) => byId.has(t.id))
-      const right = answered.filter((t) => byId.get(t.id)!.categoryId === t.categoryId)
+      const right = answered.filter((t) => byId.get(t.id)!.categoryId === truth.get(t.id))
       return { n: set.length, answered: answered.length, right: right.length, pct: answered.length ? Math.round((100 * right.length) / answered.length) : 0 }
     }
     const all = score(rows)
@@ -50,7 +51,7 @@ describe.skipIf(!FILE || !KEY)('categorize accuracy', () => {
     console.log(`at 90%+ confidence: ${confident.right}/${confident.answered} right (${confident.pct}%)`)
     for (const t of rows) {
       const s = byId.get(t.id)
-      if (s && s.categoryId !== t.categoryId) console.log(`  miss: ${t.payee} ${t.amount / 100} → ${name(s.categoryId)} ${s.confidence}% (was ${name(t.categoryId)})`)
+      if (s && s.categoryId !== truth.get(t.id)) console.log(`  miss: ${t.payee} ${t.amount / 100} → ${name(s.categoryId)} ${s.confidence}% (was ${name(truth.get(t.id)!)})`)
     }
 
     expect(all.pct).toBeGreaterThan(50)
