@@ -1,4 +1,4 @@
-import type { Account, AccountType, BudgetFile, Cents, SyncRun, Transaction } from '../model/types'
+import type { Account, AccountType, BudgetFile, Cents, SyncChange, SyncRun, Transaction } from '../model/types'
 import { INCOME_CATEGORY_ID } from '../model/types'
 import { categoryForPayee } from '../model/payeeRules'
 import { isSplit } from '../model/splits'
@@ -118,6 +118,7 @@ export function mergeSimplefin(
   const categorizedIds = new Set<string>()
   const matchedIds = new Set<string>()
   const updatedIds = new Set<string>()
+  const changes: Record<string, SyncChange> = {}
   let unchanged = 0
   let removed = 0
   let transactions = file.transactions.map((t) => ({ ...t }))
@@ -144,12 +145,16 @@ export function mergeSimplefin(
 
       const existing = byImportId.get(importId)
       if (existing) {
-        const changed = existing.date !== date || existing.amount !== amount || (existing.cleared === 'uncleared' && cleared === 'cleared')
-        if (changed) {
+        const change: SyncChange = {}
+        if (existing.date !== date) change.date = existing.date
+        if (existing.amount !== amount) change.amount = existing.amount
+        if (existing.cleared === 'uncleared' && cleared === 'cleared') change.cleared = true
+        if (Object.keys(change).length > 0) {
           existing.date = date
           existing.amount = amount
           if (existing.cleared === 'uncleared') existing.cleared = cleared
           updatedIds.add(existing.id)
+          changes[existing.id] = change
         } else unchanged++
         continue
       }
@@ -292,6 +297,7 @@ export function mergeSimplefin(
     categorized: [...categorizedIds],
     matched: [...matchedIds],
     updated: [...updatedIds],
+    changes,
     unchanged,
     removed,
   }

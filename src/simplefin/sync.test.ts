@@ -76,7 +76,7 @@ describe('mergeSimplefin', () => {
       txn({ id: 'x', date: '2026-09-10', amount: -1234, importId: 'sfin:sf-1:a', cleared: 'uncleared' }),
       txn({ id: 'y', date: '2026-09-11', amount: -500, importId: 'sfin:sf-1:b' }),
     ])
-    const { file, stats } = mergeSimplefin(
+    const { file, stats, run } = mergeSimplefin(
       existing,
       [
         bank({
@@ -91,6 +91,7 @@ describe('mergeSimplefin', () => {
     expect(stats).toEqual({ added: 0, matched: 0, updated: 1, unchanged: 1, removed: 0, categorized: 0 })
     expect(file.transactions.find((t) => t.id === 'x')).toMatchObject({ date: '2026-09-12', cleared: 'cleared' })
     expect(file.transactions).toHaveLength(2)
+    expect(run.changes).toEqual({ x: { date: '2026-09-10', cleared: true } })
   })
 
   it('matches an existing manual transaction by amount within a few days instead of duplicating', () => {
@@ -221,6 +222,7 @@ describe('mergeSimplefin', () => {
       const coffee = file.transactions.find((t) => t.payee === 'Coffee')!
       const fresh = file.transactions.find((t) => t.payee === 'NEW')!
       expect(run).toMatchObject({ at: now.toISOString(), categorized: [coffee.id], matched: ['manual'], updated: ['pending'], unchanged: 1, removed: 0 })
+      expect(run.changes).toEqual({ pending: { cleared: true } })
       expect(new Set(run.added)).toEqual(new Set([coffee.id, fresh.id]))
       expect(stats).toEqual(syncStats(run))
       expect(stats).toEqual({ added: 2, matched: 1, updated: 1, unchanged: 1, removed: 0, categorized: 1 })
