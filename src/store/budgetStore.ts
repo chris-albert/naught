@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { ensurePaymentCategories } from '../model/creditCards'
 import { setNotRecurring } from '../model/insights'
 import { deletePayeeRule, needsCategory, setPayeeRule } from '../model/payeeRules'
+import { assignGroupTargets } from '../model/targets'
 import { setTransfer } from '../model/transfers'
 import { INCOME_CATEGORY_ID, type Account, type BudgetFile, type Category, type CategoryGroup, type Cents, type MonthKey, type Transaction } from '../model/types'
 import { confirm } from '../components/ConfirmDialog'
@@ -36,6 +37,8 @@ interface BudgetState {
   setAssigned: (month: MonthKey, categoryId: string, cents: Cents) => void
   /** Shift `cents` of assigned money from one category to another in `month`; null on either side means To budget. */
   moveAssigned: (month: MonthKey, fromId: string | null, toId: string | null, cents: Cents) => void
+  /** Assign every category in `groupId` its monthly target for `month` from To budget. */
+  assignGroupTargets: (month: MonthKey, groupId: string) => void
   /** Returns the new transaction's id. */
   addTransaction: (transaction: Omit<Transaction, 'id'>) => string
   updateTransaction: (transactionId: string, patch: Partial<Transaction>) => void
@@ -122,6 +125,8 @@ export const useBudget = create<BudgetState>((set, get) => ({
       if (toId) assigned[toId] = (assigned[toId] ?? 0) + cents
       return { ...file, assigned: { ...file.assigned, [month]: assigned } }
     }, 'move money'),
+
+  assignGroupTargets: (month, groupId) => get().update((file) => assignGroupTargets(file, month, groupId), 'assign targets'),
 
   addTransaction: (transaction) => {
     const id = crypto.randomUUID()

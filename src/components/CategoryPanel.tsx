@@ -5,6 +5,7 @@ import { monthOf, ordinalDay } from '../model/dates'
 import { formatCents, parseCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
 import { linesOf } from '../model/splits'
+import { targetShortfall as shortfall } from '../model/targets'
 import { trendPath } from '../model/trend'
 import type { BudgetFile, Cents, MonthKey } from '../model/types'
 import { useBudget } from '../store/budgetStore'
@@ -17,8 +18,7 @@ const TREND_MONTHS = 6
 
 /** Shortfall against the category's monthly target, if it has one. */
 export function targetShortfall(row: CategoryRow): Cents {
-  const { target } = row.category
-  return target === undefined ? 0 : Math.max(0, target - row.assigned)
+  return shortfall(row.category, row.assigned)
 }
 
 /**

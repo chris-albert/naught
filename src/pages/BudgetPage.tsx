@@ -191,6 +191,7 @@ export function BudgetPage() {
           file={file}
           month={month}
           row={selectedGroup}
+          toBudget={budget.toBudget}
           showHidden={showHidden}
           onClose={() => setSelected(null)}
           onSelectCategory={(id) => setSelected({ kind: 'category', id })}
