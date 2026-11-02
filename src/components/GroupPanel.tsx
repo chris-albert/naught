@@ -6,7 +6,7 @@ import { formatCents } from '../model/money'
 import { buildReport, monthRange } from '../model/reports'
 import { linesOf } from '../model/splits'
 import { trendPath } from '../model/trend'
-import { CREDIT_CARD_PAYMENTS_GROUP, type BudgetFile, type MonthKey } from '../model/types'
+import { CREDIT_CARD_PAYMENTS_GROUP, type BudgetFile, type Cents, type MonthKey } from '../model/types'
 import { useBudget } from '../store/budgetStore'
 import { targetShortfall } from './CategoryPanel'
 import { NameInput } from './NameInput'
@@ -23,6 +23,7 @@ export function GroupPanel({
   file,
   month,
   row,
+  toBudget,
   showHidden,
   onClose,
   onSelectCategory,
@@ -30,11 +31,13 @@ export function GroupPanel({
   file: BudgetFile
   month: MonthKey
   row: GroupRow
+  toBudget: Cents
   showHidden: boolean
   onClose: () => void
   onSelectCategory: (categoryId: string) => void
 }) {
   const updateCategoryGroup = useBudget((s) => s.updateCategoryGroup)
+  const assignGroupTargets = useBudget((s) => s.assignGroupTargets)
   const [renaming, setRenaming] = useState(false)
 
   useEffect(() => {
@@ -129,6 +132,18 @@ export function GroupPanel({
             <p className={toGo > 0 ? 'warn-text' : 'muted'}>
               {toGo > 0 ? `${formatCents(toGo)} to go across this group.` : 'Every target in this group is funded.'}
             </p>
+            {toGo > 0 && (
+              <div className="target-actions">
+                <button type="button" onClick={() => assignGroupTargets(month, group.id)}>
+                  Assign {formatCents(toGo)}
+                </button>
+                {toBudget < toGo && (
+                  <span className="muted">
+                    {toBudget > 0 ? `Only ${formatCents(toBudget)} to budget.` : 'Nothing left to budget.'}
+                  </span>
+                )}
+              </div>
+            )}
           </>
         )}
       </section>
