@@ -106,7 +106,8 @@ describe('financeTools', () => {
   })
 
   it('budget_month lists groups and categories with assigned, activity and available', () => {
-    const text = run(file, 'budget_month', {})
+    // Last month: a whole month of grocery spending, whatever day it is today.
+    const text = run(file, 'budget_month', { month: addMonths(thisMonth, -1) })
     expect(text).toContain(`Budget for`)
     expect(text).toContain('== Everyday | ')
     expect(text).toMatch(/\nGroceries \| \$650\.00 \| -\$[\d,.]+ \| /)
