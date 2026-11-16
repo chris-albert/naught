@@ -59,6 +59,7 @@ export function Sidebar({ isOpen }: { isOpen: boolean }) {
         <h1 className="brand">{file.name || 'Naught'}</h1>
       </div>
 
+      <NavLink to="/app/home">Home</NavLink>
       <NavLink to="/app/budget">Budget</NavLink>
       <div className="nav-with-action">
         <NavLink to="/app/sync">Sync</NavLink>

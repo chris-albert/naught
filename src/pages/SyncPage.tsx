@@ -98,7 +98,7 @@ export function SyncPage() {
 }
 
 /** "3 added · 1 auto-categorized · 2 matched · 40 unchanged", leaving out what did not happen. */
-function describeRun(r: SyncRun): string {
+export function describeRun(r: SyncRun): string {
   return [
     `${r.added.length} added`,
     r.categorized.length > 0 && `${r.categorized.length} auto-categorized`,

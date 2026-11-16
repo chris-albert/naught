@@ -18,6 +18,11 @@ Early skeleton. Working today:
   asks which version to keep. Only offered when a Google client ID is
   configured (see Google Drive setup).
 - Import a YNAB budget export (the JSON from the YNAB API / `ynab-export`).
+- Home page, the first screen after opening a budget: what is left to budget,
+  spending so far against the usual, net worth, a list of what needs attention
+  (uncategorized transactions, overspent categories, unfunded targets,
+  accounts that do not match the bank), the last bank sync with a Sync now
+  button, the month's pace, and the latest transactions.
 - Budget page: month navigation, To Budget, per-category assigned / activity /
   available with editable assignments. Autosaves to the file. Clicking a
   category name opens a panel with its numbers for the month, a monthly
