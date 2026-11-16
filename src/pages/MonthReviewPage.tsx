@@ -310,7 +310,7 @@ function Versus({ value, usual }: { value: number; usual: number }) {
 
 const perDay = (available: number, daysLeft: number) => Math.floor(available / daysLeft)
 
-function PaceBar({ figures, scale }: { figures: PaceFigures; scale: number }) {
+export function PaceBar({ figures, scale }: { figures: PaceFigures; scale: number }) {
   const over = figures.averageMonth > 0 && figures.projected > figures.averageMonth
   return (
     <div className="pace-bar" title={`${formatCents(figures.soFar)} spent so far`}>

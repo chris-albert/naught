@@ -10,6 +10,7 @@ import { AiPage } from './pages/AiPage'
 import { AskPage } from './pages/AskPage'
 import { BudgetPage } from './pages/BudgetPage'
 import { FilePage } from './pages/FilePage'
+import { HomePage } from './pages/HomePage'
 import { InsightsPage } from './pages/InsightsPage'
 import { LandingPage } from './pages/LandingPage'
 import { MonthReviewPage } from './pages/MonthReviewPage'
@@ -45,7 +46,7 @@ function DemoPage() {
   const navigate = useNavigate()
   useEffect(() => {
     load(sampleBudget(), null, true)
-    navigate('/app/budget', { replace: true })
+    navigate('/app/home', { replace: true })
   }, [load, navigate])
   return null
 }
@@ -141,7 +142,8 @@ function BudgetApp() {
           <span className="brand">{file.name || 'Naught'}</span>
         </div>
         <Routes>
-          <Route path="/" element={<Navigate to="/app/budget" replace />} />
+          <Route path="/" element={<Navigate to="/app/home" replace />} />
+          <Route path="home" element={<HomePage />} />
           <Route path="budget" element={<BudgetPage />} />
           <Route path="budget/:month" element={<BudgetPage />} />
           <Route path="reports" element={<ReportsPage />} />
@@ -165,7 +167,7 @@ function BudgetApp() {
           <Route path="settings/file" element={<FilePage />} />
           <Route path="settings/versions" element={<Navigate to="/app/settings/file" replace />} />
           <Route path="import" element={<Navigate to="/app/settings/file" replace />} />
-          <Route path="*" element={<Navigate to="/app/budget" replace />} />
+          <Route path="*" element={<Navigate to="/app/home" replace />} />
         </Routes>
       </main>
     </div>
