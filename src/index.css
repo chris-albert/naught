@@ -908,3 +908,13 @@ a.stat:not(.to-budget):hover { border-color: var(--accent); }
 .home-more { font-size: 12px; font-weight: 500; color: var(--accent); }
 .card p a.link { color: var(--accent); }
 .home-scroll { overflow-x: auto; }
+.series-spent-line { fill: none; stroke: var(--series-spending); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.series-spent-area { fill: var(--series-spending); opacity: 0.12; }
+.series-spent-dot { fill: var(--panel); stroke: var(--series-spending); stroke-width: 2.5; }
+.series-usual-line { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 5 5; stroke-linecap: round; }
+.series-usual-dot { fill: var(--panel); stroke: var(--muted); stroke-width: 2; }
+.swatch.swatch-usual { background: none; border-top: 2px dashed var(--muted); height: 0; border-radius: 0; vertical-align: 3px; }
+.home-groups { display: grid; grid-template-columns: minmax(0, auto) minmax(60px, 1fr) auto; gap: 10px 12px; align-items: center; margin: 4px 0 2px; font-size: 13px; }
+.home-groups .pace-bar { height: 8px; }
+.home-groups .pace-average { top: -3px; bottom: -3px; }
+.home-groups .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

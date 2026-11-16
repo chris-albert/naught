@@ -22,7 +22,9 @@ Early skeleton. Working today:
   spending so far against the usual, net worth, a list of what needs attention
   (uncategorized transactions, overspent categories, unfunded targets,
   accounts that do not match the bank), the last bank sync with a Sync now
-  button, the month's pace, and the latest transactions.
+  button, a chart of the month's spending adding up day by day against the
+  usual, spending by group, income against spending for the last six months,
+  and the latest transactions.
 - Budget page: month navigation, To Budget, per-category assigned / activity /
   available with editable assignments. Autosaves to the file. Clicking a
   category name opens a panel with its numbers for the month, a monthly

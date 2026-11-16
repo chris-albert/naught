@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CardClosings } from '../components/CardClosings'
+import { MonthlyBars } from '../components/MonthlyBars'
+import { SpendingCurve } from '../components/SpendingCurve'
 import { currentDate, formatMonth, ordinalDay } from '../model/dates'
-import { buildHome, type Home } from '../model/home'
+import { buildHome, spendingCurve, type Home, type SpendingCurve as Curve } from '../model/home'
 import { formatCents } from '../model/money'
 import { buildMonthReview, type Pace } from '../model/monthReview'
+import { buildReport, monthRange } from '../model/reports'
 import { isSplit } from '../model/splits'
 import { INCOME_CATEGORY_ID, type BudgetFile, type Transaction } from '../model/types'
 import { getAccessUrl } from '../simplefin/client'
@@ -12,6 +15,9 @@ import { useBudget } from '../store/budgetStore'
 import { useSync } from '../store/syncStore'
 import { PaceBar } from './MonthReviewPage'
 import { describeRun } from './SyncPage'
+
+/** How many months the income and spending bars cover. */
+const RECENT_MONTHS = 6
 
 /** A sync older than this many days is called out. */
 const STALE_AFTER_DAYS = 3
@@ -24,6 +30,8 @@ export function HomePage() {
   const review = useMemo(() => buildMonthReview(file, home.month, today), [file, home.month, today])
   const pace = review.pace
   const day = Number(today.slice(8))
+  const curve = useMemo(() => spendingCurve(file, today), [file, today])
+  const recentMonths = useMemo(() => buildReport(file, monthRange(home.month, RECENT_MONTHS), day).summaries, [file, home.month, day])
 
   return (
     <>
@@ -78,7 +86,19 @@ export function HomePage() {
           <Attention home={home} />
           <SyncCard file={file} />
         </div>
-        {pace && <PaceSummary pace={pace} />}
+        {pace && <PaceSummary pace={pace} curve={curve} month={home.month} />}
+        <div className="home-grid">
+          {pace && pace.groups.length > 0 && <GroupSpending pace={pace} />}
+          <section className="card">
+            <div className="card-head">
+              <h3>Last {RECENT_MONTHS} months</h3>
+              <Link to="/app/reports" className="home-more">
+                Reports ›
+              </Link>
+            </div>
+            <MonthlyBars summaries={recentMonths} width={520} />
+          </section>
+        </div>
         <RecentTransactions file={file} transactions={home.recent} />
       </div>
     </>
@@ -225,7 +245,7 @@ function ago(iso: string): string {
 }
 
 /** Where the month's living spending is heading; the month review has the breakdown. */
-function PaceSummary({ pace }: { pace: Pace }) {
+function PaceSummary({ pace, curve, month }: { pace: Pace; curve: Curve; month: string }) {
   const over = pace.averageMonth > 0 && pace.projected > pace.averageMonth
   return (
     <section className="card">
@@ -244,7 +264,46 @@ function PaceSummary({ pace }: { pace: Pace }) {
         )}
         . {pace.daysLeft} {pace.daysLeft === 1 ? 'day' : 'days'} left.
       </p>
-      <PaceBar figures={pace} scale={Math.max(1, pace.projected, pace.averageMonth)} />
+      <SpendingCurve curve={curve} monthLabel={formatMonth(month).slice(0, 3)} />
+    </section>
+  )
+}
+
+/** How many groups the spending card lists. */
+const TOP_GROUPS = 6
+
+/** The groups with the most spending so far, each on the month review's pace bar and one shared scale. */
+function GroupSpending({ pace }: { pace: Pace }) {
+  const groups = [...pace.groups].sort((a, b) => b.soFar - a.soFar).slice(0, TOP_GROUPS)
+  const scale = Math.max(1, ...groups.flatMap((g) => [g.projected, g.averageMonth]))
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h3>Spending by group</h3>
+        <Link to="/app/reports/month" className="home-more">
+          Month review ›
+        </Link>
+      </div>
+      <div className="home-groups">
+        {groups.map((g) => (
+          <Fragment key={g.group.id}>
+            <span className="name">{g.group.name}</span>
+            <PaceBar figures={g} scale={scale} />
+            <span className="num">{formatCents(g.soFar)}</span>
+          </Fragment>
+        ))}
+      </div>
+      <div className="chart-legend">
+        <span>
+          <i className="swatch pace-swatch-spent" /> Spent so far
+        </span>
+        <span>
+          <i className="swatch pace-swatch-projected" /> Projected
+        </span>
+        <span>
+          <i className="swatch swatch-average" /> Average month
+        </span>
+      </div>
     </section>
   )
 }

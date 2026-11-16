@@ -4,13 +4,12 @@ import { formatCents } from '../model/money'
 import type { MonthSummary } from '../model/reports'
 import { ChartTooltip, TipRow } from './ChartTooltip'
 
-const W = 900
 const H = 220
 const PAD = { top: 12, right: 12, bottom: 28, left: 56 }
 const GAP = 2 // surface gap between a bar and the segment stacked on it
 
 /** Paired columns per month: income and living spending, with money set aside stacked on top of living. One shared axis. */
-export function MonthlyBars({ summaries }: { summaries: MonthSummary[] }) {
+export function MonthlyBars({ summaries, width: W = 900 }: { summaries: MonthSummary[]; /** viewBox width: narrower for a chart that sits in a narrow column, so its text is not scaled down. */ width?: number }) {
   const [hover, setHover] = useState<number | null>(null)
   const setAside = (s: MonthSummary) => Math.max(0, s.setAside)
   const anySetAside = summaries.some((s) => setAside(s) > 0)
