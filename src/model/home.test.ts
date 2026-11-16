@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildHome } from './home'
+import { buildHome, spendingCurve } from './home'
 import { INCOME_CATEGORY_ID, emptyBudget, type BudgetFile, type Transaction } from './types'
 
 const txn = (p: Partial<Transaction> & Pick<Transaction, 'date' | 'amount'>): Transaction => ({
@@ -91,5 +91,49 @@ describe('buildHome', () => {
       txn({ id: 'b', date: '2026-09-25', amount: -100, categoryId: 'food' }),
     )
     expect(buildHome(f, today).recent.map((t) => t.id)).toEqual(['a', 'pay'])
+  })
+})
+
+describe('spendingCurve', () => {
+  const today = '2026-09-04'
+
+  it('adds up living spending day by day through today, netting refunds', () => {
+    const f = fixture()
+    f.transactions.push(
+      txn({ date: '2026-09-01', amount: -1000, categoryId: 'food' }),
+      txn({ date: '2026-09-03', amount: -500, categoryId: 'fun' }),
+      txn({ date: '2026-09-03', amount: 200, categoryId: 'food' }),
+      txn({ date: '2026-09-10', amount: -9000, categoryId: 'food' }), // after today
+    )
+    expect(spendingCurve(f, today).actual).toEqual([1000, 1000, 1300, 1300])
+  })
+
+  it('leaves out income, transfers, uncategorized rows, reserves and off-budget accounts', () => {
+    const f = fixture()
+    f.categories.push({ id: 'trip', groupId: 'g', name: 'Trip', hidden: false, reserve: true })
+    f.transactions.push(
+      txn({ date: '2026-09-02', amount: -100 }),
+      txn({ date: '2026-09-02', amount: -200, transferAccountId: 'sav' }),
+      txn({ date: '2026-09-02', amount: -300, categoryId: 'trip' }),
+      txn({ date: '2026-09-02', amount: -400, categoryId: 'food', accountId: 'sav' }),
+    )
+    expect(spendingCurve(f, today).actual).toEqual([0, 0, 0, 0])
+  })
+
+  it('averages the earlier months that had spending, one point per day of this month', () => {
+    const f = fixture()
+    f.transactions.push(
+      txn({ date: '2026-08-01', amount: -1000, categoryId: 'food' }),
+      txn({ date: '2026-08-31', amount: -3000, categoryId: 'food' }),
+      txn({ date: '2026-07-02', amount: -2000, categoryId: 'food' }),
+    )
+    const { usual } = spendingCurve(f, today)
+    expect(usual).toHaveLength(30)
+    expect(usual.slice(0, 3)).toEqual([500, 1500, 1500])
+    expect(usual[29]).toBe(1500) // August's charge on the 31st falls outside a 30-day month
+  })
+
+  it('has no usual line without history', () => {
+    expect(spendingCurve(fixture(), today).usual).toEqual([])
   })
 })

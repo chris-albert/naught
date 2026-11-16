@@ -1,5 +1,6 @@
 import { computeMonth, type CategoryRow } from './budgetMath'
 import { monthOf } from './dates'
+import { avg, countedLines, dayOf, daysInMonth, spendingCategories } from './ledger'
 import { netWorthHistory } from './netWorth'
 import { reconcile, type Reconciliation } from './reconcile'
 import { monthRange } from './reports'
@@ -52,5 +53,41 @@ export function buildHome(file: BudgetFile, today: string): Home {
       .filter((t) => t.date <= today)
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
       .slice(0, RECENT),
+  }
+}
+
+/** Living spending as it adds up through the month, against how it usually adds up. */
+export interface SpendingCurve {
+  /** Net living spending through each day of the month so far; index 0 is the 1st, the last is today. */
+  actual: Cents[]
+  /** The same through each day of the month, averaged over the earlier months that had spending. Empty without any. */
+  usual: Cents[]
+}
+
+/**
+ * Counts what the reports count as living spending (see ledger.ts), refunds netted
+ * out, reserves left out. A short month holds its final total through the days it
+ * does not have, so the 31st of the average is every month's full total.
+ */
+export function spendingCurve(file: BudgetFile, today: string, window = 12): SpendingCurve {
+  const month = monthOf(today)
+  const months = monthRange(month, window + 1)
+  const index = new Map(months.map((m, i) => [m, i]))
+  const categories = spendingCategories(file)
+  const through = months.map(() => new Array<Cents>(31).fill(0))
+
+  for (const t of countedLines(file)) {
+    const i = index.get(monthOf(t.date))
+    if (i === undefined || !t.categoryId) continue
+    const category = categories.get(t.categoryId)
+    if (!category || category.reserve) continue
+    through[i][dayOf(t.date) - 1] -= t.amount
+  }
+  for (const days of through) for (let d = 1; d < days.length; d++) days[d] += days[d - 1]
+
+  const earlier = through.slice(0, -1).filter((days) => days[30] > 0)
+  return {
+    actual: through[through.length - 1].slice(0, dayOf(today)),
+    usual: earlier.length ? Array.from({ length: daysInMonth(month) }, (_, d) => avg(earlier.map((days) => days[d]))) : [],
   }
 }
